@@ -86,60 +86,103 @@ interface TankGameState {
   healPlayer: (amount: number) => void;
 }
 
-const QUESTIONS_BANK: Question[] = [
-  // Level 1 - Simple 2-3 letter words (covers: A, B, C, D, G, I, N, O, P, R, T, U, X, Z)
-  { id: "1", type: "word", question: "Which word is CAT?", options: ["CAT", "BAT", "RAT", "HAT"], correctAnswer: "CAT", level: 1 },
-  { id: "2", type: "word", question: "Which word is DOG?", options: ["DOG", "LOG", "FOG", "BOG"], correctAnswer: "DOG", level: 1 },
-  { id: "3", type: "word", question: "Which word is BIG?", options: ["BIG", "DIG", "PIG", "FIG"], correctAnswer: "BIG", level: 1 },
-  { id: "4", type: "word", question: "Which word is RUN?", options: ["RUN", "BUN", "FUN", "SUN"], correctAnswer: "RUN", level: 1 },
-  { id: "5", type: "word", question: "Which word is SIT?", options: ["SIT", "BIT", "HIT", "PIT"], correctAnswer: "SIT", level: 1 },
-  { id: "6", type: "word", question: "Which word is CUP?", options: ["CUP", "PUP", "SUP", "UP"], correctAnswer: "CUP", level: 1 },
-  { id: "7", type: "word", question: "Which word is PAN?", options: ["PAN", "TAN", "MAN", "VAN"], correctAnswer: "PAN", level: 1 },
-  { id: "8", type: "word", question: "Which word is BOX?", options: ["BOX", "FOX", "OX", "SOX"], correctAnswer: "BOX", level: 1 },
-  { id: "9", type: "word", question: "Which word is ZOO?", options: ["ZOO", "BOO", "MOO", "TOO"], correctAnswer: "ZOO", level: 1 },
-  
-  // Level 2 - 3-4 letter words (covers: E, F, H, K, L, M, S, W)
-  { id: "10", type: "word", question: "Which word is BED?", options: ["BED", "RED", "FED", "LED"], correctAnswer: "BED", level: 2 },
-  { id: "11", type: "word", question: "Which word is HAT?", options: ["HAT", "BAT", "CAT", "MAT"], correctAnswer: "HAT", level: 2 },
-  { id: "12", type: "word", question: "Which word is WET?", options: ["WET", "PET", "MET", "JET"], correctAnswer: "WET", level: 2 },
-  { id: "13", type: "word", question: "Which word is SUN?", options: ["SUN", "RUN", "BUN", "FUN"], correctAnswer: "SUN", level: 2 },
-  { id: "14", type: "word", question: "Which word is KING?", options: ["KING", "RING", "WING", "SING"], correctAnswer: "KING", level: 2 },
-  { id: "15", type: "word", question: "Which word is FISH?", options: ["FISH", "DISH", "WISH", "SWISH"], correctAnswer: "FISH", level: 2 },
-  { id: "16", type: "word", question: "Which word is LOOK?", options: ["LOOK", "BOOK", "COOK", "HOOK"], correctAnswer: "LOOK", level: 2 },
-  { id: "17", type: "word", question: "Which word is JUMP?", options: ["JUMP", "BUMP", "PUMP", "LUMP"], correctAnswer: "JUMP", level: 2 },
-  
-  // Level 3 - 4-5 letter words (covers: Q, V, Y)
-  { id: "18", type: "word", question: "Which word is QUIT?", options: ["QUIT", "QUITE", "QUICK", "QUILT"], correctAnswer: "QUIT", level: 3 },
-  { id: "19", type: "word", question: "Which word is VEST?", options: ["VEST", "BEST", "WEST", "REST"], correctAnswer: "VEST", level: 3 },
-  { id: "20", type: "word", question: "Which word is YELLOW?", options: ["YELLOW", "MELLOW", "BELLOW", "FELLOW"], correctAnswer: "YELLOW", level: 3 },
-  { id: "21", type: "word", question: "Which word is PLAY?", options: ["PLAY", "CLAY", "GRAY", "STAY"], correctAnswer: "PLAY", level: 3 },
-  { id: "22", type: "word", question: "Which word is STOP?", options: ["STOP", "SHOP", "DROP", "CROP"], correctAnswer: "STOP", level: 3 },
-  { id: "23", type: "word", question: "Which word is TREE?", options: ["TREE", "FREE", "THEE", "THREE"], correctAnswer: "TREE", level: 3 },
-  { id: "24", type: "word", question: "Which word is BLUE?", options: ["BLUE", "CLUE", "GLUE", "TRUE"], correctAnswer: "BLUE", level: 3 },
-  
-  // Level 4 - Mixed lengths (reinforces all letters)
-  { id: "25", type: "word", question: "Which word is FROG?", options: ["FROG", "FLOG", "FROM", "FROWN"], correctAnswer: "FROG", level: 4 },
-  { id: "26", type: "word", question: "Which word is MILK?", options: ["MILK", "SILK", "BILK", "MINK"], correctAnswer: "MILK", level: 4 },
-  { id: "27", type: "word", question: "Which word is NEST?", options: ["NEST", "BEST", "WEST", "REST"], correctAnswer: "NEST", level: 4 },
-  { id: "28", type: "word", question: "Which word is CLOCK?", options: ["CLOCK", "BLOCK", "FLOCK", "STOCK"], correctAnswer: "CLOCK", level: 4 },
-  { id: "29", type: "word", question: "Which word is GRASS?", options: ["GRASS", "CLASS", "BRASS", "GLASS"], correctAnswer: "GRASS", level: 4 },
-  { id: "30", type: "word", question: "Which word is SNAP?", options: ["SNAP", "SNIP", "SNAG", "SLAP"], correctAnswer: "SNAP", level: 4 },
-  
-  // Level 5 - Longer and more complex words
-  { id: "31", type: "word", question: "Which word is QUEEN?", options: ["QUEEN", "QUEER", "QUEST", "QUENCH"], correctAnswer: "QUEEN", level: 5 },
-  { id: "32", type: "word", question: "Which word is MIXER?", options: ["MIXER", "FIXER", "BOXER", "MISER"], correctAnswer: "MIXER", level: 5 },
-  { id: "33", type: "word", question: "Which word is ZEBRA?", options: ["ZEBRA", "DEBRA", "EXTRA", "COBRA"], correctAnswer: "ZEBRA", level: 5 },
-  { id: "34", type: "word", question: "Which word is BRING?", options: ["BRING", "BLING", "BRINE", "BRINK"], correctAnswer: "BRING", level: 5 },
-  { id: "35", type: "word", question: "Which word is CRAVE?", options: ["CRAVE", "BRAVE", "GRAVE", "SHAVE"], correctAnswer: "CRAVE", level: 5 },
-  { id: "36", type: "word", question: "Which word is THINK?", options: ["THINK", "THICK", "THING", "THANK"], correctAnswer: "THINK", level: 5 },
-  { id: "37", type: "word", question: "Which word is DWELL?", options: ["DWELL", "SWELL", "SHELL", "SPELL"], correctAnswer: "DWELL", level: 5 },
-  { id: "38", type: "word", question: "Which word is GRAPE?", options: ["GRAPE", "DRAPE", "GRATE", "GRIPE"], correctAnswer: "GRAPE", level: 5 },
+// Comprehensive word bank with 100+ words organized by difficulty
+const WORD_BANK = {
+  level1: [
+    "IT", "IS", "THE", "CAT", "DOG", "BIG", "RUN", "SIT", "CUP", "PAN", 
+    "BOX", "ZOO", "RED", "HOT", "EAT", "END", "BAT", "HAT", "SUN", "BED",
+    "FLY", "LOW"
+  ],
+  level2: [
+    "THIS", "THAT", "WHAT", "WHO", "HOW", "FISH", "JUMP", "STOP", "FOOD", 
+    "COLD", "HIGH", "BLUE", "PINK", "TANK", "GAME", "STAR", "SHIP", "LOOK", "KING", "WET",
+    "WARS"
+  ],
+  level3: [
+    "WHICH", "START", "CHOOSE", "YELLOW", "GREEN", "BLACK", "WHITE", "PLAY", 
+    "TREE", "QUIT", "VEST", "NEST", "BEST", "WEST", "FROG", "MILK", "CLOCK", "GRASS", "SNAP", "WHEN"
+  ],
+  level4: [
+    "QUICK", "THINK", "BRING", "THANK", "PLANT", "STAND", "GRAND", "BRAND",
+    "BLEND", "SPEND", "TREND", "FLOAT", "GREAT", "TREAT", "SPEED", "QUEEN", "MIXER", "GRAPE", "CRAVE", "SWING"
+  ],
+  level5: [
+    "FLIGHT", "BRIGHT", "FROZEN", "BROKEN", "SPOKEN", "CHANGE",
+    "STRANGE", "ORANGE", "PURPLE", "SILVER", "GOLDEN", "ROCKET", "PLANET", "CASTLE", "DRAGON", "WIZARD", "KNIGHT", "BATTLE", "SPRING", "STRONG"
+  ]
+};
+
+// All words combined for generating distractors
+const ALL_WORDS = [
+  ...WORD_BANK.level1,
+  ...WORD_BANK.level2,
+  ...WORD_BANK.level3,
+  ...WORD_BANK.level4,
+  ...WORD_BANK.level5
 ];
 
+// Function to generate similar-looking distractor words
+const generateDistractors = (correctWord: string, count: number): string[] => {
+  const distractors: string[] = [];
+  const wordLength = correctWord.length;
+  
+  // Get words of similar length from the word bank
+  const similarWords = ALL_WORDS.filter(w => 
+    w !== correctWord && 
+    Math.abs(w.length - wordLength) <= 1
+  );
+  
+  // Shuffle and take unique distractors
+  const shuffled = similarWords.sort(() => Math.random() - 0.5);
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    distractors.push(shuffled[i]);
+  }
+  
+  // If we don't have enough distractors, generate some by modifying letters
+  while (distractors.length < count && distractors.length < ALL_WORDS.length - 1) {
+    const randomWord = ALL_WORDS[Math.floor(Math.random() * ALL_WORDS.length)];
+    if (randomWord !== correctWord && !distractors.includes(randomWord)) {
+      distractors.push(randomWord);
+    }
+  }
+  
+  return distractors.slice(0, count);
+};
+
+// Function to shuffle an array
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
+// Generate a random question for a given level
 const getQuestionForLevel = (level: number): Question | null => {
-  const levelQuestions = QUESTIONS_BANK.filter(q => q.level === level);
-  if (levelQuestions.length === 0) return null;
-  return levelQuestions[Math.floor(Math.random() * levelQuestions.length)];
+  const levelKey = `level${level}` as keyof typeof WORD_BANK;
+  const words = WORD_BANK[levelKey];
+  
+  if (!words || words.length === 0) return null;
+  
+  // Pick a random word from the level
+  const correctWord = words[Math.floor(Math.random() * words.length)];
+  
+  // Generate 5 distractor words
+  const distractors = generateDistractors(correctWord, 5);
+  
+  // Combine correct answer with distractors and shuffle
+  const allOptions = shuffleArray([correctWord, ...distractors]);
+  
+  return {
+    id: `q-${Date.now()}-${Math.random()}`,
+    type: "word",
+    question: `Which word is ${correctWord}?`,
+    options: allOptions,
+    correctAnswer: correctWord,
+    level
+  };
 };
 
 const loadHighScore = (): number => {

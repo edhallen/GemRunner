@@ -85,14 +85,14 @@ export function QuizScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {currentQuestion.options.map((option, index) => (
             <Button
               key={index}
               onClick={() => handleAnswer(option)}
               disabled={showFeedback}
               className={`
-                h-24 text-3xl font-bold font-mono transition-all
+                h-24 text-2xl font-bold font-mono transition-all
                 ${showFeedback && selectedAnswer === option
                   ? isCorrect
                     ? "bg-green-500 hover:bg-green-500 text-white scale-110"
