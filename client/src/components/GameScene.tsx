@@ -60,13 +60,14 @@ export function GameScene() {
   const [explosions, setExplosions] = useState<Explosion[]>([]);
 
   useEffect(() => {
-    const enemyCount = Math.min(2 + currentLevel, 6);
+    // Increased difficulty: more enemies, higher health, faster speed
+    const enemyCount = Math.min(3 + currentLevel * 2, 10);
     const newEnemies = Array.from({ length: enemyCount }, (_, i) => ({
       id: `enemy-${i}-${Date.now()}`,
       x: (Math.random() - 0.5) * 18,
       y: 8 + Math.random() * 4,
-      health: 30 + currentLevel * 10,
-      speed: 0.5 + currentLevel * 0.2,
+      health: 40 + currentLevel * 15,
+      speed: 0.7 + currentLevel * 0.3,
       lastShot: 0,
     }));
     setEnemies(newEnemies);
