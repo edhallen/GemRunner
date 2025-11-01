@@ -7,7 +7,7 @@ export type TankType = "light" | "medium" | "heavy" | "speed";
 
 export interface Question {
   id: string;
-  type: "letter_recognition" | "letter_sound" | "letter_combination";
+  type: "letter_recognition" | "letter_sound" | "letter_combination" | "sight_word" | "cvc_word" | "blend_sound";
   question: string;
   options: string[];
   correctAnswer: string;
@@ -109,6 +109,32 @@ const QUESTIONS_BANK: Question[] = [
   { id: "18", type: "letter_combination", question: "What word is this: S-U-N?", options: ["RUN", "FUN", "SUN", "BUN"], correctAnswer: "SUN", level: 5 },
   { id: "19", type: "letter_sound", question: "What sound does 'F' make?", options: ["fff", "vvv", "sss", "zzz"], correctAnswer: "fff", level: 5 },
   { id: "20", type: "letter_combination", question: "What word is this: F-U-N?", options: ["RUN", "FUN", "SUN", "BUN"], correctAnswer: "FUN", level: 5 },
+  
+  // Level 1 - Additional CVC Words
+  { id: "21", type: "cvc_word", question: "What is this word: C-A-T?", options: ["CAT", "BAT", "RAT", "HAT"], correctAnswer: "CAT", level: 1 },
+  { id: "22", type: "cvc_word", question: "What is this word: D-O-G?", options: ["DOG", "LOG", "FOG", "HOG"], correctAnswer: "DOG", level: 1 },
+  
+  // Level 2 - Sight Words
+  { id: "23", type: "sight_word", question: "Which is the word 'THE'?", options: ["THE", "HE", "SHE", "WE"], correctAnswer: "THE", level: 2 },
+  { id: "24", type: "sight_word", question: "Which is the word 'AND'?", options: ["AND", "END", "ADD", "ANT"], correctAnswer: "AND", level: 2 },
+  { id: "25", type: "cvc_word", question: "What is this word: R-U-N?", options: ["RUN", "BUN", "FUN", "SUN"], correctAnswer: "RUN", level: 2 },
+  
+  // Level 3 - Blend Sounds
+  { id: "26", type: "blend_sound", question: "Which word starts with 'BL'?", options: ["BLUE", "CLUE", "TRUE", "GLUE"], correctAnswer: "BLUE", level: 3 },
+  { id: "27", type: "blend_sound", question: "Which word starts with 'CR'?", options: ["CRAB", "GRAB", "BLAB", "DRAB"], correctAnswer: "CRAB", level: 3 },
+  { id: "28", type: "sight_word", question: "Which is the word 'YOU'?", options: ["YOU", "YOUR", "OUT", "YES"], correctAnswer: "YOU", level: 3 },
+  
+  // Level 4 - Advanced Blends & CVC
+  { id: "29", type: "blend_sound", question: "Which word starts with 'ST'?", options: ["STOP", "SHOP", "CROP", "DROP"], correctAnswer: "STOP", level: 4 },
+  { id: "30", type: "blend_sound", question: "Which word starts with 'TR'?", options: ["TREE", "FREE", "BREE", "GREE"], correctAnswer: "TREE", level: 4 },
+  { id: "31", type: "cvc_word", question: "What is this word: B-E-D?", options: ["BED", "RED", "FED", "LED"], correctAnswer: "BED", level: 4 },
+  { id: "32", type: "sight_word", question: "Which is the word 'SEE'?", options: ["SEE", "BEE", "TEE", "FEE"], correctAnswer: "SEE", level: 4 },
+  
+  // Level 5 - Advanced
+  { id: "33", type: "blend_sound", question: "Which word starts with 'FL'?", options: ["FLAG", "DRAG", "SLAG", "BRAG"], correctAnswer: "FLAG", level: 5 },
+  { id: "34", type: "blend_sound", question: "Which word starts with 'GR'?", options: ["GRASS", "CLASS", "BRASS", "PASS"], correctAnswer: "GRASS", level: 5 },
+  { id: "35", type: "sight_word", question: "Which is the word 'PLAY'?", options: ["PLAY", "CLAY", "GRAY", "STAY"], correctAnswer: "PLAY", level: 5 },
+  { id: "36", type: "cvc_word", question: "What is this word: P-I-G?", options: ["PIG", "BIG", "DIG", "FIG"], correctAnswer: "PIG", level: 5 },
 ];
 
 const getQuestionForLevel = (level: number): Question | null => {
