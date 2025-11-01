@@ -2,7 +2,7 @@ import { useTankGame } from "@/lib/stores/useTankGame";
 import { Button } from "@/components/ui/button";
 
 export function MenuScreen() {
-  const { setPhase, score, correctAnswers, questionsAnswered } = useTankGame();
+  const { setPhase, score, correctAnswers, questionsAnswered, highScore } = useTankGame();
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-blue-900 via-purple-900 to-pink-900">
@@ -28,8 +28,17 @@ export function MenuScreen() {
             START GAME
           </Button>
 
-          {questionsAnswered > 0 && (
+          {highScore > 0 && (
             <div className="bg-black/60 border-4 border-yellow-400 rounded p-6 text-white">
+              <div className="text-2xl font-bold mb-2 text-yellow-400">HIGH SCORE</div>
+              <div className="text-5xl font-bold font-mono">
+                {highScore.toString().padStart(6, '0')}
+              </div>
+            </div>
+          )}
+
+          {questionsAnswered > 0 && (
+            <div className="bg-black/60 border-4 border-blue-400 rounded p-6 text-white">
               <div className="text-2xl font-bold mb-2">LAST GAME STATS</div>
               <div className="space-y-2 text-xl font-mono">
                 <div>Score: {score}</div>

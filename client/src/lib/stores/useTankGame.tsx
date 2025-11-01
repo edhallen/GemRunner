@@ -46,6 +46,7 @@ interface TankGameState {
   phase: GamePhase;
   currentLevel: number;
   score: number;
+  highScore: number;
   playerHealth: number;
   maxHealth: number;
   playerTank: TankType | null;
@@ -116,11 +117,29 @@ const getQuestionForLevel = (level: number): Question | null => {
   return levelQuestions[Math.floor(Math.random() * levelQuestions.length)];
 };
 
+const loadHighScore = (): number => {
+  try {
+    const saved = localStorage.getItem("tankReaderHighScore");
+    return saved ? parseInt(saved, 10) : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const saveHighScore = (score: number) => {
+  try {
+    localStorage.setItem("tankReaderHighScore", score.toString());
+  } catch (error) {
+    console.error("Failed to save high score:", error);
+  }
+};
+
 export const useTankGame = create<TankGameState>()(
   subscribeWithSelector((set, get) => ({
     phase: "menu",
     currentLevel: 1,
     score: 0,
+    highScore: loadHighScore(),
     playerHealth: 100,
     maxHealth: 100,
     playerTank: null,
@@ -223,7 +242,14 @@ export const useTankGame = create<TankGameState>()(
     },
 
     addScore: (points) => {
-      set((state) => ({ score: state.score + points }));
+      set((state) => {
+        const newScore = state.score + points;
+        if (newScore > state.highScore) {
+          saveHighScore(newScore);
+          return { score: newScore, highScore: newScore };
+        }
+        return { score: newScore };
+      });
     },
 
     setEnemies: (enemies) => {
