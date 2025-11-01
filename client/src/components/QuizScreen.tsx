@@ -37,7 +37,7 @@ export function QuizScreen() {
     if ('speechSynthesis' in window && synthRef.current && currentQuestion) {
       const word = extractWordFromQuestion(currentQuestion.question);
       window.speechSynthesis.cancel(); // Stop any current speech
-      synthRef.current.text = word;
+      synthRef.current.text = word.toLowerCase(); // Convert to lowercase so it's read as a word, not acronym
       window.speechSynthesis.speak(synthRef.current);
     }
   };
