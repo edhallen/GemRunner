@@ -2,7 +2,25 @@
 
 ## Overview
 
-Tank Reader is an educational game that combines reading comprehension challenges with tank battle gameplay. The application is designed for children ages 5-7 to learn letter recognition, letter sounds, and letter combinations through an engaging arcade-style experience. Players answer reading questions, select tanks, and battle enemies across progressive levels, earning points and advancing through increasingly difficult stages.
+Tank Reader is an educational game that combines reading comprehension challenges with tank battle gameplay. The application is designed for children ages 5-7 to learn letter recognition, letter sounds, letter combinations, CVC words, sight words, and blend sounds through an engaging arcade-style experience. Players answer reading questions, select tanks, and battle enemies across progressive levels, earning points, unlocking achievements, and advancing through increasingly difficult stages.
+
+## Recent Changes (November 1, 2025)
+
+- **High Score System**: Added localStorage-based high score persistence displayed prominently on the menu screen
+- **Expanded Educational Content**: Added 16 new questions covering CVC words (cat, dog, pig), sight words (the, and, you, see, play), and blend sounds (bl, cr, st, tr, fl, gr)
+- **Achievement System**: Implemented 10 achievements tracking learning milestones:
+  - First Steps: Answer first question
+  - Quiz Master: Get 100% on a single quiz
+  - Getting Started: Reach level 3
+  - Almost There: Reach level 5
+  - Victory!: Beat all 5 levels
+  - Learning Leader: 10 correct answers
+  - Point Collector: Score 1000 points
+  - High Scorer: Score 5000 points
+  - Tank Commander: Defeat 10 enemies
+  - Power Player: Collect 5 power-ups
+- **Power-Up System**: Health packs, rapid fire, and speed boosts spawn randomly during gameplay (20% chance per level)
+- **Progress Tracking**: Enhanced stat tracking including enemies defeated, power-ups collected, per-quiz accuracy, and lifetime accuracy
 
 ## User Preferences
 
@@ -28,7 +46,8 @@ Preferred communication style: Simple, everyday language.
 ### Game State Management
 
 **Primary Stores** (Zustand):
-- `useTankGame`: Main game state including phases, levels, score, player/enemy positions, bullets, questions, and answers
+- `useTankGame`: Main game state including phases, levels, score, high score, player/enemy positions, bullets, questions, answers, power-ups, and stat tracking (enemies defeated, power-ups collected, per-quiz/lifetime accuracy)
+- `useAchievements`: Achievement system with 10 milestones, localStorage persistence, and progress tracking
 - `useAudio`: Audio state management for background music, sound effects, and mute toggle
 - `useGame`: Generic game phase controller (appears to be legacy, tank-specific store is primary)
 
