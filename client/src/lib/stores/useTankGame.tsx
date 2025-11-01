@@ -32,6 +32,16 @@ export interface Bullet {
   owner: "player" | "enemy";
 }
 
+export type PowerUpType = "health" | "speed" | "rapid_fire";
+
+export interface PowerUp {
+  id: string;
+  x: number;
+  y: number;
+  type: PowerUpType;
+  active: boolean;
+}
+
 interface TankGameState {
   phase: GamePhase;
   currentLevel: number;
@@ -43,6 +53,9 @@ interface TankGameState {
   playerY: number;
   enemies: Enemy[];
   bullets: Bullet[];
+  powerUps: PowerUp[];
+  activePowerUps: Set<PowerUpType>;
+  powerUpEndTimes: Map<PowerUpType, number>;
   currentQuestion: Question | null;
   questionsAnswered: number;
   correctAnswers: number;
@@ -59,6 +72,10 @@ interface TankGameState {
   setBullets: (bullets: Bullet[]) => void;
   removeEnemy: (id: string) => void;
   updateEnemy: (id: string, updates: Partial<Enemy>) => void;
+  setPowerUps: (powerUps: PowerUp[]) => void;
+  collectPowerUp: (id: string, type: PowerUpType) => void;
+  updatePowerUps: () => void;
+  healPlayer: (amount: number) => void;
 }
 
 const QUESTIONS_BANK: Question[] = [
@@ -111,6 +128,9 @@ export const useTankGame = create<TankGameState>()(
     playerY: -8,
     enemies: [],
     bullets: [],
+    powerUps: [],
+    activePowerUps: new Set(),
+    powerUpEndTimes: new Map(),
     currentQuestion: null,
     questionsAnswered: 0,
     correctAnswers: 0,
@@ -179,6 +199,9 @@ export const useTankGame = create<TankGameState>()(
         playerY: -8,
         enemies: [],
         bullets: [],
+        powerUps: [],
+        activePowerUps: new Set(),
+        powerUpEndTimes: new Map(),
         currentQuestion: null,
         questionsAnswered: 0,
         correctAnswers: 0,
@@ -223,6 +246,60 @@ export const useTankGame = create<TankGameState>()(
           e.id === id ? { ...e, ...updates } : e
         ),
       }));
+    },
+
+    setPowerUps: (powerUps) => {
+      set({ powerUps });
+    },
+
+    collectPowerUp: (id, type) => {
+      const { activePowerUps, powerUpEndTimes, maxHealth, playerHealth } = get();
+      const now = Date.now();
+      
+      const newActive = new Set(activePowerUps);
+      newActive.add(type);
+      
+      const newEndTimes = new Map(powerUpEndTimes);
+      newEndTimes.set(type, now + 10000);
+      
+      set((state) => ({
+        powerUps: state.powerUps.filter(p => p.id !== id),
+        activePowerUps: newActive,
+        powerUpEndTimes: newEndTimes,
+      }));
+      
+      if (type === "health") {
+        set({ playerHealth: Math.min(playerHealth + 30, maxHealth) });
+      }
+      
+      console.log("Collected power-up:", type);
+    },
+
+    updatePowerUps: () => {
+      const { activePowerUps, powerUpEndTimes } = get();
+      const now = Date.now();
+      const newActive = new Set(activePowerUps);
+      const newEndTimes = new Map(powerUpEndTimes);
+      
+      let changed = false;
+      activePowerUps.forEach(type => {
+        const endTime = powerUpEndTimes.get(type);
+        if (endTime && now > endTime) {
+          newActive.delete(type);
+          newEndTimes.delete(type);
+          changed = true;
+          console.log("Power-up expired:", type);
+        }
+      });
+      
+      if (changed) {
+        set({ activePowerUps: newActive, powerUpEndTimes: newEndTimes });
+      }
+    },
+
+    healPlayer: (amount) => {
+      const { playerHealth, maxHealth } = get();
+      set({ playerHealth: Math.min(playerHealth + amount, maxHealth) });
     },
   }))
 );

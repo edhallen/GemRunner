@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { useTankGame, type TankType } from "@/lib/stores/useTankGame";
+import { useTankGame, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
 import { useKeyboardControls } from "@react-three/drei";
 
 const TANK_COLORS: Record<TankType, string> = {
@@ -16,6 +16,12 @@ const TANK_SPEEDS: Record<TankType, number> = {
   medium: 3,
   heavy: 2,
   speed: 5
+};
+
+const POWERUP_COLORS: Record<PowerUpType, string> = {
+  health: "#22c55e",
+  speed: "#fbbf24",
+  rapid_fire: "#ef4444"
 };
 
 export function GameScene() {
@@ -33,6 +39,11 @@ export function GameScene() {
     currentLevel,
     setEnemies,
     updateEnemy,
+    powerUps,
+    setPowerUps,
+    collectPowerUp,
+    updatePowerUps,
+    activePowerUps,
   } = useTankGame();
 
   const playerRef = useRef<THREE.Mesh>(null);
@@ -51,13 +62,28 @@ export function GameScene() {
     }));
     setEnemies(newEnemies);
     console.log("Created enemies:", newEnemies.length);
-  }, [currentLevel, setEnemies]);
+
+    const powerUpTypes: PowerUpType[] = ["health", "speed", "rapid_fire"];
+    const powerUpCount = Math.min(currentLevel, 3);
+    const newPowerUps = Array.from({ length: powerUpCount }, (_, i) => ({
+      id: `powerup-${i}-${Date.now()}`,
+      x: (Math.random() - 0.5) * 16,
+      y: (Math.random() - 0.5) * 16,
+      type: powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)],
+      active: true,
+    }));
+    setPowerUps(newPowerUps);
+    console.log("Created power-ups:", newPowerUps.length);
+  }, [currentLevel, setEnemies, setPowerUps]);
 
   useFrame((state, delta) => {
     if (!playerTank) return;
 
+    updatePowerUps();
+
     const keys = getKeys();
-    const speed = TANK_SPEEDS[playerTank] * delta;
+    const speedMultiplier = activePowerUps.has("speed") ? 1.5 : 1;
+    const speed = TANK_SPEEDS[playerTank] * delta * speedMultiplier;
     let newX = playerX;
     let newY = playerY;
 
@@ -87,7 +113,8 @@ export function GameScene() {
 
     if (keys.shoot) {
       const now = Date.now();
-      if (now - lastShotTime.current > 500) {
+      const fireRate = activePowerUps.has("rapid_fire") ? 200 : 500;
+      if (now - lastShotTime.current > fireRate) {
         console.log("Player shooting!");
         lastShotTime.current = now;
         const newBullet = {
@@ -101,6 +128,17 @@ export function GameScene() {
         setBullets([...bullets, newBullet]);
       }
     }
+
+    powerUps.forEach(powerUp => {
+      const dx = powerUp.x - playerX;
+      const dy = powerUp.y - playerY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 0.7 && powerUp.active) {
+        collectPowerUp(powerUp.id, powerUp.type);
+        addScore(50);
+      }
+    });
 
     const updatedBullets = bullets
       .map(b => ({
@@ -235,6 +273,19 @@ export function GameScene() {
           <sphereGeometry args={[0.15, 8, 8]} />
           <meshBasicMaterial color={bullet.owner === "player" ? "#fbbf24" : "#ef4444"} />
         </mesh>
+      ))}
+
+      {powerUps.map(powerUp => (
+        <group key={powerUp.id} position={[powerUp.x, powerUp.y, 0]}>
+          <mesh rotation={[0, 0, Math.PI / 4]}>
+            <boxGeometry args={[0.5, 0.5, 0.5]} />
+            <meshBasicMaterial color={POWERUP_COLORS[powerUp.type]} />
+          </mesh>
+          <mesh position={[0, 0, 0.3]}>
+            <boxGeometry args={[0.3, 0.3, 0.1]} />
+            <meshBasicMaterial color={POWERUP_COLORS[powerUp.type]} />
+          </mesh>
+        </group>
       ))}
     </group>
   );
