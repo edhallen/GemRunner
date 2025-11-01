@@ -60,6 +60,10 @@ interface TankGameState {
   currentQuestion: Question | null;
   questionsAnswered: number;
   correctAnswers: number;
+  quizQuestionsAnswered: number;
+  quizCorrectAnswers: number;
+  enemiesDefeated: number;
+  powerUpsCollected: number;
 
   setPhase: (phase: GamePhase) => void;
   selectTank: (tank: TankType) => void;
@@ -179,12 +183,21 @@ export const useTankGame = create<TankGameState>()(
     currentQuestion: null,
     questionsAnswered: 0,
     correctAnswers: 0,
+    quizQuestionsAnswered: 0,
+    quizCorrectAnswers: 0,
+    enemiesDefeated: 0,
+    powerUpsCollected: 0,
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
       if (phase === "quiz") {
         const question = getQuestionForLevel(get().currentLevel);
-        set({ phase, currentQuestion: question });
+        set({ 
+          phase, 
+          currentQuestion: question,
+          quizQuestionsAnswered: 0,
+          quizCorrectAnswers: 0,
+        });
       } else {
         set({ phase });
       }
@@ -196,7 +209,7 @@ export const useTankGame = create<TankGameState>()(
     },
 
     answerQuestion: (answer) => {
-      const { currentQuestion, correctAnswers, questionsAnswered } = get();
+      const { currentQuestion, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered } = get();
       if (!currentQuestion) return false;
       
       const isCorrect = answer === currentQuestion.correctAnswer;
@@ -205,6 +218,8 @@ export const useTankGame = create<TankGameState>()(
       set({
         questionsAnswered: questionsAnswered + 1,
         correctAnswers: isCorrect ? correctAnswers + 1 : correctAnswers,
+        quizQuestionsAnswered: quizQuestionsAnswered + 1,
+        quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
       });
       
       return isCorrect;
@@ -227,6 +242,8 @@ export const useTankGame = create<TankGameState>()(
           enemies: [],
           bullets: [],
           currentQuestion: getQuestionForLevel(newLevel),
+          quizQuestionsAnswered: 0,
+          quizCorrectAnswers: 0,
         });
       }
     },
@@ -247,9 +264,13 @@ export const useTankGame = create<TankGameState>()(
         powerUps: [],
         activePowerUps: new Set(),
         powerUpEndTimes: new Map(),
+        enemiesDefeated: 0,
+        powerUpsCollected: 0,
         currentQuestion: null,
         questionsAnswered: 0,
         correctAnswers: 0,
+        quizQuestionsAnswered: 0,
+        quizCorrectAnswers: 0,
       });
     },
 
@@ -289,6 +310,7 @@ export const useTankGame = create<TankGameState>()(
     removeEnemy: (id) => {
       set((state) => ({
         enemies: state.enemies.filter(e => e.id !== id),
+        enemiesDefeated: state.enemiesDefeated + 1,
       }));
     },
 
@@ -318,6 +340,7 @@ export const useTankGame = create<TankGameState>()(
         powerUps: state.powerUps.filter(p => p.id !== id),
         activePowerUps: newActive,
         powerUpEndTimes: newEndTimes,
+        powerUpsCollected: state.powerUpsCollected + 1,
       }));
       
       if (type === "health") {

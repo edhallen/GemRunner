@@ -1,8 +1,24 @@
+import { useEffect } from "react";
 import { useTankGame } from "@/lib/stores/useTankGame";
+import { useAchievements } from "@/lib/stores/useAchievements";
 import { Button } from "@/components/ui/button";
 
 export function LevelComplete() {
-  const { currentLevel, score, nextLevel } = useTankGame();
+  const { currentLevel, score, nextLevel, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, enemiesDefeated, powerUpsCollected } = useTankGame();
+  const { checkAchievements } = useAchievements();
+
+  useEffect(() => {
+    checkAchievements({
+      score,
+      correctAnswers,
+      questionsAnswered,
+      quizCorrectAnswers,
+      quizQuestionsAnswered,
+      currentLevel,
+      enemiesDefeated,
+      powerUpsCollected,
+    });
+  }, [score, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, currentLevel, enemiesDefeated, powerUpsCollected, checkAchievements]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/90">
