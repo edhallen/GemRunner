@@ -30,11 +30,14 @@ Tank Reader is an educational game that combines reading comprehension challenge
   - Enemy health: 55→70→85→100→115 (was 40→50→60→70→80)
   - Enemy speed: 1.0→1.3→1.6→1.9→2.2 (was 0.7→0.9→1.1→1.3→1.5)
   - More challenging gameplay requiring strategic thinking
-- **Word-Based Quiz System**: Complete redesign of educational content
-  - Replaced all letter recognition questions with 38 word-based questions (2-6 letters)
-  - Format: "Which word is CAT?" with similar-looking options (BAT, RAT, HAT)
-  - Covers all 26 letters across 5 difficulty levels
-  - Text-to-speech now reads just the word (e.g., "cat") instead of the full question
+- **Word-Based Quiz System**: Complete redesign with dynamic question generation
+  - Expanded to 104 unique words across 5 difficulty levels
+  - Dynamic question generation with randomized answer positions
+  - 6 answer options per question (up from 4) in 3-column grid layout
+  - Includes all user-requested vocabulary: it, is, this, that, the, which, what, who, how, start, game, stop, end, choose, tank, hot, cold, high, low, red, yellow, blue, green, black, white, pink, food, eat, run, star, wars, fly, ship
+  - Distractor words selected from similar-length words for appropriate difficulty
+  - Correct answer position is randomized (not always top-left)
+  - Text-to-speech reads just the word (e.g., "cat") instead of the full question
 - **Negative Scoring**: Incorrect answers now subtract 1 lesson point (can go negative)
   - Encourages careful reading and listening
   - Maintains 10-point requirement for gameplay access
