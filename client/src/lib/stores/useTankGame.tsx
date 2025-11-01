@@ -151,7 +151,7 @@ export const useTankGame = create<TankGameState>()(
       console.log("Advancing to level:", newLevel);
       
       if (newLevel > 5) {
-        set({ phase: "game_over" });
+        set({ currentLevel: newLevel, phase: "game_over" });
       } else {
         set({
           currentLevel: newLevel,
