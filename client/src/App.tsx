@@ -1,5 +1,6 @@
 import { KeyboardControls } from "@react-three/drei";
 import { useTankGame } from "./lib/stores/useTankGame";
+import { NameEntry } from "./components/NameEntry";
 import { MenuScreen } from "./components/MenuScreen";
 import { QuizScreen } from "./components/QuizScreen";
 import { TankSelection } from "./components/TankSelection";
@@ -31,6 +32,7 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <KeyboardControls map={controls}>
+        {phase === 'name_entry' && <NameEntry />}
         {phase === 'menu' && <MenuScreen />}
         {phase === 'quiz' && <QuizScreen />}
         {phase === 'tank_selection' && <TankSelection />}

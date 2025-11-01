@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
-export type GamePhase = "menu" | "quiz" | "tank_selection" | "playing" | "level_complete" | "game_over";
+export type GamePhase = "name_entry" | "menu" | "quiz" | "tank_selection" | "playing" | "level_complete" | "game_over";
 
 export type TankType = "light" | "medium" | "heavy" | "speed";
 
@@ -44,6 +44,7 @@ export interface PowerUp {
 
 interface TankGameState {
   phase: GamePhase;
+  playerName: string;
   currentLevel: number;
   score: number;
   highScore: number;
@@ -67,6 +68,7 @@ interface TankGameState {
   lessonPoints: number;
 
   setPhase: (phase: GamePhase) => void;
+  setPlayerName: (name: string) => void;
   selectTank: (tank: TankType) => void;
   answerQuestion: (answer: string) => boolean;
   nextLevel: () => void;
@@ -159,7 +161,8 @@ const saveHighScore = (score: number) => {
 
 export const useTankGame = create<TankGameState>()(
   subscribeWithSelector((set, get) => ({
-    phase: "menu",
+    phase: "name_entry",
+    playerName: "",
     currentLevel: 1,
     score: 0,
     highScore: loadHighScore(),
@@ -212,6 +215,11 @@ export const useTankGame = create<TankGameState>()(
       }
     },
 
+    setPlayerName: (name) => {
+      console.log("Setting player name:", name);
+      set({ playerName: name });
+    },
+
     selectTank: (tank) => {
       console.log("Selected tank:", tank);
       set({ playerTank: tank });
@@ -258,14 +266,17 @@ export const useTankGame = create<TankGameState>()(
           currentQuestion: getQuestionForLevel(newLevel),
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
+          lessonPoints: 0, // Reset lesson points for new level
         });
       }
     },
 
     resetGame: () => {
       console.log("Resetting game");
+      const { playerName } = get();
       set({
-        phase: "menu",
+        phase: "name_entry",
+        playerName: "", // Clear name on full reset
         currentLevel: 1,
         score: 0,
         playerHealth: 100,
