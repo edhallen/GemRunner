@@ -2,12 +2,17 @@ import { useTankGame } from "@/lib/stores/useTankGame";
 import { Progress } from "@/components/ui/progress";
 
 export function GameHUD() {
-  const { score, playerHealth, maxHealth, currentLevel } = useTankGame();
+  const { score, playerHealth, maxHealth, currentLevel, playerName } = useTankGame();
   const healthPercent = (playerHealth / maxHealth) * 100;
 
   return (
     <div className="fixed inset-0 pointer-events-none">
       <div className="absolute top-4 left-4 bg-black/80 border-4 border-yellow-500 rounded p-4 pointer-events-none">
+        {playerName && (
+          <div className="text-white font-bold font-mono text-lg mb-2">
+            {playerName}
+          </div>
+        )}
         <div className="text-yellow-400 font-bold font-mono text-xl mb-2">
           LEVEL: {currentLevel}
         </div>

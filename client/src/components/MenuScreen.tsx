@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AchievementsPanel } from "@/components/AchievementsPanel";
 
 export function MenuScreen() {
-  const { setPhase, score, correctAnswers, questionsAnswered, highScore } = useTankGame();
+  const { setPhase, score, correctAnswers, questionsAnswered, highScore, playerName } = useTankGame();
   const { achievements } = useAchievements();
   const [showAchievements, setShowAchievements] = useState(false);
   
@@ -40,6 +40,12 @@ export function MenuScreen() {
         >
           TANK READER
         </h1>
+        
+        {playerName && (
+          <p className="text-4xl text-white mb-4 font-bold">
+            Welcome back, {playerName}! 👋
+          </p>
+        )}
         
         <p className="text-3xl text-white mb-8 font-bold">
           🎯 Learn Letters • Blast Enemies • Have Fun! 🎯

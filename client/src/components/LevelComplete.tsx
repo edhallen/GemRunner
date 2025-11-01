@@ -4,7 +4,7 @@ import { useAchievements } from "@/lib/stores/useAchievements";
 import { Button } from "@/components/ui/button";
 
 export function LevelComplete() {
-  const { currentLevel, score, nextLevel, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, enemiesDefeated, powerUpsCollected } = useTankGame();
+  const { currentLevel, score, nextLevel, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, enemiesDefeated, powerUpsCollected, playerName } = useTankGame();
   const { checkAchievements } = useAchievements();
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function LevelComplete() {
         
         <div className="bg-black/20 rounded-lg p-6 mb-8">
           <p className="text-4xl font-bold text-white mb-4">
-            EXCELLENT WORK!
+            {playerName ? `EXCELLENT WORK, ${playerName.toUpperCase()}!` : "EXCELLENT WORK!"}
           </p>
           <p className="text-3xl font-bold text-black">
             Score: {score}

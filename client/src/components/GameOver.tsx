@@ -4,7 +4,7 @@ import { useAchievements } from "@/lib/stores/useAchievements";
 import { Button } from "@/components/ui/button";
 
 export function GameOver() {
-  const { currentLevel, score, resetGame, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, enemiesDefeated, powerUpsCollected } = useTankGame();
+  const { currentLevel, score, resetGame, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, enemiesDefeated, powerUpsCollected, playerName } = useTankGame();
   const { checkAchievements } = useAchievements();
 
   const didWin = currentLevel > 5;
@@ -35,7 +35,7 @@ export function GameOver() {
               🏆 YOU WIN! 🏆
             </h2>
             <p className="text-4xl text-green-400 font-bold mb-8">
-              ALL LEVELS COMPLETE!
+              {playerName ? `${playerName.toUpperCase()}, YOU DID IT!` : "ALL LEVELS COMPLETE!"}
             </p>
           </>
         ) : (
@@ -47,7 +47,7 @@ export function GameOver() {
               GAME OVER
             </h2>
             <p className="text-3xl text-white font-bold mb-8">
-              Don't give up! Try again!
+              {playerName ? `Don't give up, ${playerName}! Try again!` : "Don't give up! Try again!"}
             </p>
           </>
         )}

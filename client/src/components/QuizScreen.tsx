@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 const REQUIRED_LESSON_POINTS = 10;
 
 export function QuizScreen() {
-  const { currentQuestion, answerQuestion, setPhase, lessonPoints, currentLevel } = useTankGame();
+  const { currentQuestion, answerQuestion, setPhase, lessonPoints, currentLevel, playerName } = useTankGame();
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -66,16 +66,18 @@ export function QuizScreen() {
     <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-blue-900 to-blue-700">
       <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-2xl border-8 border-yellow-400 relative">
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold text-blue-900 mb-4 font-mono">
+          {playerName && (
+            <p className="text-2xl font-bold text-purple-700 mb-3">
+              {playerName}, listen carefully!
+            </p>
+          )}
+          <h2 className="text-4xl font-bold text-blue-900 mb-6 font-mono">
             READING CHALLENGE!
           </h2>
           <div className="flex items-center justify-center gap-4 mb-4">
-            <p className="text-2xl text-gray-800 font-bold">
-              {currentQuestion.question}
-            </p>
             <Button
               onClick={speakWord}
-              className="bg-purple-500 hover:bg-purple-600 text-white h-12 w-12 rounded-full text-2xl flex items-center justify-center"
+              className="bg-purple-500 hover:bg-purple-600 text-white h-20 w-20 rounded-full text-4xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-all"
               title="Read word aloud"
             >
               🔊
