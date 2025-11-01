@@ -7,7 +7,7 @@ export type TankType = "light" | "medium" | "heavy" | "speed";
 
 export interface Question {
   id: string;
-  type: "letter_recognition" | "letter_sound" | "letter_combination" | "sight_word" | "cvc_word" | "blend_sound";
+  type: "word" | "letter_recognition" | "letter_sound" | "letter_combination" | "sight_word" | "cvc_word" | "blend_sound";
   question: string;
   options: string[];
   correctAnswer: string;
@@ -85,61 +85,53 @@ interface TankGameState {
 }
 
 const QUESTIONS_BANK: Question[] = [
-  // Level 1 - Basic Letter Recognition
-  { id: "1", type: "letter_recognition", question: "Which letter is this: A?", options: ["A", "B", "C", "D"], correctAnswer: "A", level: 1 },
-  { id: "2", type: "letter_recognition", question: "Which letter is this: B?", options: ["A", "B", "C", "D"], correctAnswer: "B", level: 1 },
-  { id: "3", type: "letter_sound", question: "What sound does 'M' make?", options: ["mmm", "sss", "fff", "zzz"], correctAnswer: "mmm", level: 1 },
-  { id: "4", type: "letter_sound", question: "What sound does 'S' make?", options: ["mmm", "sss", "fff", "zzz"], correctAnswer: "sss", level: 1 },
+  // Level 1 - Simple 2-3 letter words (covers: A, B, C, D, G, I, N, O, P, R, T, U, X, Z)
+  { id: "1", type: "word", question: "Which word is CAT?", options: ["CAT", "BAT", "RAT", "HAT"], correctAnswer: "CAT", level: 1 },
+  { id: "2", type: "word", question: "Which word is DOG?", options: ["DOG", "LOG", "FOG", "BOG"], correctAnswer: "DOG", level: 1 },
+  { id: "3", type: "word", question: "Which word is BIG?", options: ["BIG", "DIG", "PIG", "FIG"], correctAnswer: "BIG", level: 1 },
+  { id: "4", type: "word", question: "Which word is RUN?", options: ["RUN", "BUN", "FUN", "SUN"], correctAnswer: "RUN", level: 1 },
+  { id: "5", type: "word", question: "Which word is SIT?", options: ["SIT", "BIT", "HIT", "PIT"], correctAnswer: "SIT", level: 1 },
+  { id: "6", type: "word", question: "Which word is CUP?", options: ["CUP", "PUP", "SUP", "UP"], correctAnswer: "CUP", level: 1 },
+  { id: "7", type: "word", question: "Which word is PAN?", options: ["PAN", "TAN", "MAN", "VAN"], correctAnswer: "PAN", level: 1 },
+  { id: "8", type: "word", question: "Which word is BOX?", options: ["BOX", "FOX", "OX", "SOX"], correctAnswer: "BOX", level: 1 },
+  { id: "9", type: "word", question: "Which word is ZOO?", options: ["ZOO", "BOO", "MOO", "TOO"], correctAnswer: "ZOO", level: 1 },
   
-  // Level 2 - More Letters
-  { id: "5", type: "letter_recognition", question: "Which letter is this: T?", options: ["T", "F", "L", "I"], correctAnswer: "T", level: 2 },
-  { id: "6", type: "letter_sound", question: "What sound does 'T' make?", options: ["tuh", "duh", "buh", "puh"], correctAnswer: "tuh", level: 2 },
-  { id: "7", type: "letter_recognition", question: "Which letter is this: N?", options: ["M", "N", "H", "U"], correctAnswer: "N", level: 2 },
-  { id: "8", type: "letter_sound", question: "What sound does 'P' make?", options: ["tuh", "duh", "buh", "puh"], correctAnswer: "puh", level: 2 },
+  // Level 2 - 3-4 letter words (covers: E, F, H, K, L, M, S, W)
+  { id: "10", type: "word", question: "Which word is BED?", options: ["BED", "RED", "FED", "LED"], correctAnswer: "BED", level: 2 },
+  { id: "11", type: "word", question: "Which word is HAT?", options: ["HAT", "BAT", "CAT", "MAT"], correctAnswer: "HAT", level: 2 },
+  { id: "12", type: "word", question: "Which word is WET?", options: ["WET", "PET", "MET", "JET"], correctAnswer: "WET", level: 2 },
+  { id: "13", type: "word", question: "Which word is SUN?", options: ["SUN", "RUN", "BUN", "FUN"], correctAnswer: "SUN", level: 2 },
+  { id: "14", type: "word", question: "Which word is KING?", options: ["KING", "RING", "WING", "SING"], correctAnswer: "KING", level: 2 },
+  { id: "15", type: "word", question: "Which word is FISH?", options: ["FISH", "DISH", "WISH", "SWISH"], correctAnswer: "FISH", level: 2 },
+  { id: "16", type: "word", question: "Which word is LOOK?", options: ["LOOK", "BOOK", "COOK", "HOOK"], correctAnswer: "LOOK", level: 2 },
+  { id: "17", type: "word", question: "Which word is JUMP?", options: ["JUMP", "BUMP", "PUMP", "LUMP"], correctAnswer: "JUMP", level: 2 },
   
-  // Level 3 - Letter Combinations
-  { id: "9", type: "letter_combination", question: "What word starts with 'C-A'?", options: ["CAT", "DOG", "BAT", "RAT"], correctAnswer: "CAT", level: 3 },
-  { id: "10", type: "letter_combination", question: "What word starts with 'D-O'?", options: ["CAT", "DOG", "BAT", "RAT"], correctAnswer: "DOG", level: 3 },
-  { id: "11", type: "letter_sound", question: "What sound does 'D' make?", options: ["tuh", "duh", "buh", "puh"], correctAnswer: "duh", level: 3 },
-  { id: "12", type: "letter_combination", question: "What word starts with 'B-A'?", options: ["CAT", "DOG", "BAT", "RAT"], correctAnswer: "BAT", level: 3 },
+  // Level 3 - 4-5 letter words (covers: Q, V, Y)
+  { id: "18", type: "word", question: "Which word is QUIT?", options: ["QUIT", "QUITE", "QUICK", "QUILT"], correctAnswer: "QUIT", level: 3 },
+  { id: "19", type: "word", question: "Which word is VEST?", options: ["VEST", "BEST", "WEST", "REST"], correctAnswer: "VEST", level: 3 },
+  { id: "20", type: "word", question: "Which word is YELLOW?", options: ["YELLOW", "MELLOW", "BELLOW", "FELLOW"], correctAnswer: "YELLOW", level: 3 },
+  { id: "21", type: "word", question: "Which word is PLAY?", options: ["PLAY", "CLAY", "GRAY", "STAY"], correctAnswer: "PLAY", level: 3 },
+  { id: "22", type: "word", question: "Which word is STOP?", options: ["STOP", "SHOP", "DROP", "CROP"], correctAnswer: "STOP", level: 3 },
+  { id: "23", type: "word", question: "Which word is TREE?", options: ["TREE", "FREE", "THEE", "THREE"], correctAnswer: "TREE", level: 3 },
+  { id: "24", type: "word", question: "Which word is BLUE?", options: ["BLUE", "CLUE", "GLUE", "TRUE"], correctAnswer: "BLUE", level: 3 },
   
-  // Level 4 - Advanced
-  { id: "13", type: "letter_combination", question: "Which letters make the 'SH' sound?", options: ["SH", "CH", "TH", "PH"], correctAnswer: "SH", level: 4 },
-  { id: "14", type: "letter_combination", question: "Which letters make the 'CH' sound?", options: ["SH", "CH", "TH", "PH"], correctAnswer: "CH", level: 4 },
-  { id: "15", type: "letter_recognition", question: "Which letter is this: K?", options: ["K", "R", "X", "Y"], correctAnswer: "K", level: 4 },
-  { id: "16", type: "letter_sound", question: "What sound does 'K' make?", options: ["kuh", "guh", "huh", "juh"], correctAnswer: "kuh", level: 4 },
+  // Level 4 - Mixed lengths (reinforces all letters)
+  { id: "25", type: "word", question: "Which word is FROG?", options: ["FROG", "FLOG", "FROM", "FROWN"], correctAnswer: "FROG", level: 4 },
+  { id: "26", type: "word", question: "Which word is MILK?", options: ["MILK", "SILK", "BILK", "MINK"], correctAnswer: "MILK", level: 4 },
+  { id: "27", type: "word", question: "Which word is NEST?", options: ["NEST", "BEST", "WEST", "REST"], correctAnswer: "NEST", level: 4 },
+  { id: "28", type: "word", question: "Which word is CLOCK?", options: ["CLOCK", "BLOCK", "FLOCK", "STOCK"], correctAnswer: "CLOCK", level: 4 },
+  { id: "29", type: "word", question: "Which word is GRASS?", options: ["GRASS", "CLASS", "BRASS", "GLASS"], correctAnswer: "GRASS", level: 4 },
+  { id: "30", type: "word", question: "Which word is SNAP?", options: ["SNAP", "SNIP", "SNAG", "SLAP"], correctAnswer: "SNAP", level: 4 },
   
-  // Level 5 - Challenge
-  { id: "17", type: "letter_combination", question: "What word is this: R-U-N?", options: ["RUN", "FUN", "SUN", "BUN"], correctAnswer: "RUN", level: 5 },
-  { id: "18", type: "letter_combination", question: "What word is this: S-U-N?", options: ["RUN", "FUN", "SUN", "BUN"], correctAnswer: "SUN", level: 5 },
-  { id: "19", type: "letter_sound", question: "What sound does 'F' make?", options: ["fff", "vvv", "sss", "zzz"], correctAnswer: "fff", level: 5 },
-  { id: "20", type: "letter_combination", question: "What word is this: F-U-N?", options: ["RUN", "FUN", "SUN", "BUN"], correctAnswer: "FUN", level: 5 },
-  
-  // Level 1 - Additional CVC Words
-  { id: "21", type: "cvc_word", question: "What is this word: C-A-T?", options: ["CAT", "BAT", "RAT", "HAT"], correctAnswer: "CAT", level: 1 },
-  { id: "22", type: "cvc_word", question: "What is this word: D-O-G?", options: ["DOG", "LOG", "FOG", "HOG"], correctAnswer: "DOG", level: 1 },
-  
-  // Level 2 - Sight Words
-  { id: "23", type: "sight_word", question: "Which is the word 'THE'?", options: ["THE", "HE", "SHE", "WE"], correctAnswer: "THE", level: 2 },
-  { id: "24", type: "sight_word", question: "Which is the word 'AND'?", options: ["AND", "END", "ADD", "ANT"], correctAnswer: "AND", level: 2 },
-  { id: "25", type: "cvc_word", question: "What is this word: R-U-N?", options: ["RUN", "BUN", "FUN", "SUN"], correctAnswer: "RUN", level: 2 },
-  
-  // Level 3 - Blend Sounds
-  { id: "26", type: "blend_sound", question: "Which word starts with 'BL'?", options: ["BLUE", "CLUE", "TRUE", "GLUE"], correctAnswer: "BLUE", level: 3 },
-  { id: "27", type: "blend_sound", question: "Which word starts with 'CR'?", options: ["CRAB", "GRAB", "BLAB", "DRAB"], correctAnswer: "CRAB", level: 3 },
-  { id: "28", type: "sight_word", question: "Which is the word 'YOU'?", options: ["YOU", "YOUR", "OUT", "YES"], correctAnswer: "YOU", level: 3 },
-  
-  // Level 4 - Advanced Blends & CVC
-  { id: "29", type: "blend_sound", question: "Which word starts with 'ST'?", options: ["STOP", "SHOP", "CROP", "DROP"], correctAnswer: "STOP", level: 4 },
-  { id: "30", type: "blend_sound", question: "Which word starts with 'TR'?", options: ["TREE", "FREE", "BREE", "GREE"], correctAnswer: "TREE", level: 4 },
-  { id: "31", type: "cvc_word", question: "What is this word: B-E-D?", options: ["BED", "RED", "FED", "LED"], correctAnswer: "BED", level: 4 },
-  { id: "32", type: "sight_word", question: "Which is the word 'SEE'?", options: ["SEE", "BEE", "TEE", "FEE"], correctAnswer: "SEE", level: 4 },
-  
-  // Level 5 - Advanced
-  { id: "33", type: "blend_sound", question: "Which word starts with 'FL'?", options: ["FLAG", "DRAG", "SLAG", "BRAG"], correctAnswer: "FLAG", level: 5 },
-  { id: "34", type: "blend_sound", question: "Which word starts with 'GR'?", options: ["GRASS", "CLASS", "BRASS", "PASS"], correctAnswer: "GRASS", level: 5 },
-  { id: "35", type: "sight_word", question: "Which is the word 'PLAY'?", options: ["PLAY", "CLAY", "GRAY", "STAY"], correctAnswer: "PLAY", level: 5 },
-  { id: "36", type: "cvc_word", question: "What is this word: P-I-G?", options: ["PIG", "BIG", "DIG", "FIG"], correctAnswer: "PIG", level: 5 },
+  // Level 5 - Longer and more complex words
+  { id: "31", type: "word", question: "Which word is QUEEN?", options: ["QUEEN", "QUEER", "QUEST", "QUENCH"], correctAnswer: "QUEEN", level: 5 },
+  { id: "32", type: "word", question: "Which word is MIXER?", options: ["MIXER", "FIXER", "BOXER", "MISER"], correctAnswer: "MIXER", level: 5 },
+  { id: "33", type: "word", question: "Which word is ZEBRA?", options: ["ZEBRA", "DEBRA", "EXTRA", "COBRA"], correctAnswer: "ZEBRA", level: 5 },
+  { id: "34", type: "word", question: "Which word is BRING?", options: ["BRING", "BLING", "BRINE", "BRINK"], correctAnswer: "BRING", level: 5 },
+  { id: "35", type: "word", question: "Which word is CRAVE?", options: ["CRAVE", "BRAVE", "GRAVE", "SHAVE"], correctAnswer: "CRAVE", level: 5 },
+  { id: "36", type: "word", question: "Which word is THINK?", options: ["THINK", "THICK", "THING", "THANK"], correctAnswer: "THINK", level: 5 },
+  { id: "37", type: "word", question: "Which word is DWELL?", options: ["DWELL", "SWELL", "SHELL", "SPELL"], correctAnswer: "DWELL", level: 5 },
+  { id: "38", type: "word", question: "Which word is GRAPE?", options: ["GRAPE", "DRAPE", "GRATE", "GRIPE"], correctAnswer: "GRAPE", level: 5 },
 ];
 
 const getQuestionForLevel = (level: number): Question | null => {
@@ -232,14 +224,18 @@ export const useTankGame = create<TankGameState>()(
       const isCorrect = answer === currentQuestion.correctAnswer;
       console.log("Answer:", answer, "Correct:", isCorrect);
       
+      // Award 1 point for correct answers, subtract 1 point for incorrect answers (can go negative)
+      const newLessonPoints = isCorrect ? lessonPoints + 1 : lessonPoints - 1;
+      
       set({
         questionsAnswered: questionsAnswered + 1,
         correctAnswers: isCorrect ? correctAnswers + 1 : correctAnswers,
         quizQuestionsAnswered: quizQuestionsAnswered + 1,
         quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
-        lessonPoints: isCorrect ? lessonPoints + 1 : lessonPoints,
+        lessonPoints: newLessonPoints,
       });
       
+      console.log("Lesson points:", newLessonPoints);
       return isCorrect;
     },
 

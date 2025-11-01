@@ -27,10 +27,17 @@ export function QuizScreen() {
     };
   }, []);
 
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window && synthRef.current) {
+  const extractWordFromQuestion = (question: string): string => {
+    // Extract the word from "Which word is WORD?" format
+    const match = question.match(/Which word is (.+)\?/i);
+    return match ? match[1].trim() : question;
+  };
+
+  const speakWord = () => {
+    if ('speechSynthesis' in window && synthRef.current && currentQuestion) {
+      const word = extractWordFromQuestion(currentQuestion.question);
       window.speechSynthesis.cancel(); // Stop any current speech
-      synthRef.current.text = text;
+      synthRef.current.text = word;
       window.speechSynthesis.speak(synthRef.current);
     }
   };
@@ -50,15 +57,8 @@ export function QuizScreen() {
     setTimeout(() => {
       setShowFeedback(false);
       setSelectedAnswer(null);
-      
-      // Check if player has earned enough lesson points
-      const pointsAfterAnswer = lessonPoints + (correct ? 1 : 0);
-      if (pointsAfterAnswer >= REQUIRED_LESSON_POINTS) {
-        setPhase("tank_selection");
-      } else {
-        // Load another question
-        setPhase("quiz");
-      }
+      // Always try to advance to tank selection - setPhase will gate if not enough points
+      setPhase("tank_selection");
     }, 2000);
   };
 
@@ -74,9 +74,9 @@ export function QuizScreen() {
               {currentQuestion.question}
             </p>
             <Button
-              onClick={() => speakText(currentQuestion.question)}
+              onClick={speakWord}
               className="bg-purple-500 hover:bg-purple-600 text-white h-12 w-12 rounded-full text-2xl flex items-center justify-center"
-              title="Read question aloud"
+              title="Read word aloud"
             >
               🔊
             </Button>

@@ -1,9 +1,16 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTankGame, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
 import { useKeyboardControls } from "@react-three/drei";
 import { Controls } from "@/App";
+
+interface Explosion {
+  id: string;
+  x: number;
+  y: number;
+  startTime: number;
+}
 
 const TANK_COLORS: Record<TankType, string> = {
   light: "#4ade80",
@@ -50,6 +57,7 @@ export function GameScene() {
   const playerRef = useRef<THREE.Mesh>(null);
   const lastShotTime = useRef(0);
   const [, getKeys] = useKeyboardControls<Controls>();
+  const [explosions, setExplosions] = useState<Explosion[]>([]);
 
   useEffect(() => {
     const enemyCount = Math.min(2 + currentLevel, 6);
@@ -112,13 +120,16 @@ export function GameScene() {
       updatePlayerPosition(newX, newY);
     }
 
+    // Shooting logic - create new bullet to be added to finalBullets later
+    let newPlayerBullet = null;
     if (keys.shoot) {
+      console.log("Shoot key detected!");
       const now = Date.now();
       const fireRate = activePowerUps.has("rapid_fire") ? 200 : 500;
       if (now - lastShotTime.current > fireRate) {
-        console.log("Player shooting!");
+        console.log("Player shooting! Creating bullet at", playerX, playerY);
         lastShotTime.current = now;
-        const newBullet = {
+        newPlayerBullet = {
           id: `bullet-${now}`,
           x: playerX,
           y: playerY + 0.5,
@@ -126,7 +137,9 @@ export function GameScene() {
           vy: 10,
           owner: "player" as const,
         };
-        setBullets([...bullets, newBullet]);
+        console.log("Created new bullet");
+      } else {
+        console.log("Shoot on cooldown");
       }
     }
 
@@ -162,6 +175,14 @@ export function GameScene() {
           if (distance < 0.8) {
             bulletsToRemove.add(bullet.id);
             const newHealth = enemy.health - 10;
+            
+            // Create explosion effect
+            setExplosions(prev => [...prev, {
+              id: `explosion-${Date.now()}-${Math.random()}`,
+              x: enemy.x,
+              y: enemy.y,
+              startTime: Date.now(),
+            }]);
             
             if (newHealth <= 0) {
               enemiesToRemove.add(enemy.id);
@@ -221,7 +242,17 @@ export function GameScene() {
       }
     });
 
+    // Add new player bullet if one was created
+    if (newPlayerBullet) {
+      finalBullets.push(newPlayerBullet);
+      console.log("Added player bullet to finalBullets, total:", finalBullets.length);
+    }
+
     setBullets(finalBullets);
+
+    // Remove old explosions (after 500ms)
+    const now = Date.now();
+    setExplosions(prev => prev.filter(exp => now - exp.startTime < 500));
 
     if (enemies.length === 0 && currentLevel <= 5) {
       setTimeout(() => {
@@ -288,6 +319,25 @@ export function GameScene() {
           </mesh>
         </group>
       ))}
+
+      {explosions.map(explosion => {
+        const age = (Date.now() - explosion.startTime) / 500;
+        const scale = 0.3 + age * 2;
+        const opacity = Math.max(0, 1 - age);
+        
+        return (
+          <group key={explosion.id} position={[explosion.x, explosion.y, 0.5]}>
+            <mesh>
+              <circleGeometry args={[scale, 16]} />
+              <meshBasicMaterial color="#ff6600" transparent opacity={opacity} />
+            </mesh>
+            <mesh>
+              <circleGeometry args={[scale * 0.7, 16]} />
+              <meshBasicMaterial color="#ffff00" transparent opacity={opacity * 1.5} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
