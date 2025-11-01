@@ -9,7 +9,7 @@ import { GameOver } from "./components/GameOver";
 import { SoundManager } from "./components/SoundManager";
 import "@fontsource/inter";
 
-enum Controls {
+export enum Controls {
   forward = 'forward',
   back = 'back',
   left = 'left',

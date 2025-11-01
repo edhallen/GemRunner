@@ -14,12 +14,12 @@ export function GameHUD() {
         <div className="text-white font-bold font-mono mb-2">
           HP: {playerHealth}/{maxHealth}
         </div>
-        <div className="w-48">
-          <Progress 
-            value={healthPercent} 
-            className="h-4 bg-gray-700"
+        <div className="w-48 h-4 bg-gray-700 rounded-full overflow-hidden border-2 border-gray-500">
+          <div 
+            className="h-full transition-all duration-300"
             style={{
-              background: '#374151'
+              width: `${healthPercent}%`,
+              background: healthPercent > 50 ? '#22c55e' : healthPercent > 25 ? '#eab308' : '#ef4444'
             }}
           />
         </div>

@@ -64,6 +64,7 @@ interface TankGameState {
   quizCorrectAnswers: number;
   enemiesDefeated: number;
   powerUpsCollected: number;
+  lessonPoints: number;
 
   setPhase: (phase: GamePhase) => void;
   selectTank: (tank: TankType) => void;
@@ -187,9 +188,25 @@ export const useTankGame = create<TankGameState>()(
     quizCorrectAnswers: 0,
     enemiesDefeated: 0,
     powerUpsCollected: 0,
+    lessonPoints: 0,
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
+      const { lessonPoints } = get();
+      
+      // Gate tank selection and playing behind 10 lesson points
+      if ((phase === "tank_selection" || phase === "playing") && lessonPoints < 10) {
+        console.log("Need 10 lesson points to play! Current:", lessonPoints);
+        const question = getQuestionForLevel(get().currentLevel);
+        set({ 
+          phase: "quiz", 
+          currentQuestion: question,
+          quizQuestionsAnswered: 0,
+          quizCorrectAnswers: 0,
+        });
+        return;
+      }
+      
       if (phase === "quiz") {
         const question = getQuestionForLevel(get().currentLevel);
         set({ 
@@ -209,7 +226,7 @@ export const useTankGame = create<TankGameState>()(
     },
 
     answerQuestion: (answer) => {
-      const { currentQuestion, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered } = get();
+      const { currentQuestion, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, lessonPoints } = get();
       if (!currentQuestion) return false;
       
       const isCorrect = answer === currentQuestion.correctAnswer;
@@ -220,6 +237,7 @@ export const useTankGame = create<TankGameState>()(
         correctAnswers: isCorrect ? correctAnswers + 1 : correctAnswers,
         quizQuestionsAnswered: quizQuestionsAnswered + 1,
         quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
+        lessonPoints: isCorrect ? lessonPoints + 1 : lessonPoints,
       });
       
       return isCorrect;
@@ -271,6 +289,7 @@ export const useTankGame = create<TankGameState>()(
         correctAnswers: 0,
         quizQuestionsAnswered: 0,
         quizCorrectAnswers: 0,
+        lessonPoints: 0,
       });
     },
 

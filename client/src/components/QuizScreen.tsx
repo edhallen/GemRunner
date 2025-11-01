@@ -1,12 +1,39 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTankGame } from "@/lib/stores/useTankGame";
 import { Button } from "@/components/ui/button";
 
+const REQUIRED_LESSON_POINTS = 10;
+
 export function QuizScreen() {
-  const { currentQuestion, answerQuestion, setPhase } = useTankGame();
+  const { currentQuestion, answerQuestion, setPhase, lessonPoints, currentLevel } = useTankGame();
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    // Initialize speech synthesis
+    if ('speechSynthesis' in window) {
+      synthRef.current = new SpeechSynthesisUtterance();
+      synthRef.current.rate = 0.8; // Slow down for kids
+      synthRef.current.pitch = 1.1;
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window && synthRef.current) {
+      window.speechSynthesis.cancel(); // Stop any current speech
+      synthRef.current.text = text;
+      window.speechSynthesis.speak(synthRef.current);
+    }
+  };
 
   if (!currentQuestion) {
     return null;
@@ -23,20 +50,37 @@ export function QuizScreen() {
     setTimeout(() => {
       setShowFeedback(false);
       setSelectedAnswer(null);
-      setPhase("tank_selection");
+      
+      // Check if player has earned enough lesson points
+      const pointsAfterAnswer = lessonPoints + (correct ? 1 : 0);
+      if (pointsAfterAnswer >= REQUIRED_LESSON_POINTS) {
+        setPhase("tank_selection");
+      } else {
+        // Load another question
+        setPhase("quiz");
+      }
     }, 2000);
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-blue-900 to-blue-700">
-      <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-2xl border-8 border-yellow-400">
+      <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-2xl border-8 border-yellow-400 relative">
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-blue-900 mb-4 font-mono">
             READING CHALLENGE!
           </h2>
-          <p className="text-2xl text-gray-800 font-bold mb-2">
-            {currentQuestion.question}
-          </p>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <p className="text-2xl text-gray-800 font-bold">
+              {currentQuestion.question}
+            </p>
+            <Button
+              onClick={() => speakText(currentQuestion.question)}
+              className="bg-purple-500 hover:bg-purple-600 text-white h-12 w-12 rounded-full text-2xl flex items-center justify-center"
+              title="Read question aloud"
+            >
+              🔊
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -65,6 +109,25 @@ export function QuizScreen() {
             {isCorrect ? "🎉 CORRECT! Great job!" : "❌ Try again next time!"}
           </div>
         )}
+
+        <div className="mt-8 pt-6 border-t-4 border-yellow-400">
+          <div className="text-center mb-3">
+            <p className="text-xl font-bold text-blue-900">
+              Lesson Progress: {lessonPoints} / {REQUIRED_LESSON_POINTS} points
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              {REQUIRED_LESSON_POINTS - lessonPoints > 0 
+                ? `${REQUIRED_LESSON_POINTS - lessonPoints} more to unlock the game!` 
+                : "Ready to play! 🎮"}
+            </p>
+          </div>
+          <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-gray-400">
+            <div 
+              className="h-full transition-all duration-500 bg-gradient-to-r from-green-400 to-green-600"
+              style={{ width: `${Math.min((lessonPoints / REQUIRED_LESSON_POINTS) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

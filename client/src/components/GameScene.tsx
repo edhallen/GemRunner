@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTankGame, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
 import { useKeyboardControls } from "@react-three/drei";
+import { Controls } from "@/App";
 
 const TANK_COLORS: Record<TankType, string> = {
   light: "#4ade80",
@@ -48,7 +49,7 @@ export function GameScene() {
 
   const playerRef = useRef<THREE.Mesh>(null);
   const lastShotTime = useRef(0);
-  const [, getKeys] = useKeyboardControls();
+  const [, getKeys] = useKeyboardControls<Controls>();
 
   useEffect(() => {
     const enemyCount = Math.min(2 + currentLevel, 6);

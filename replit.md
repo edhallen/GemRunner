@@ -6,6 +6,18 @@ Tank Reader is an educational game that combines reading comprehension challenge
 
 ## Recent Changes (November 1, 2025)
 
+- **Lesson Points System**: Implemented educational gate requiring 10 correct quiz answers before gameplay access
+  - Added lessonPoints tracking in useTankGame store (1 point per correct answer)
+  - Quiz screen loops continuously until 10 points earned
+  - Visual progress bar and counter displayed at bottom of quiz screen
+  - Resets on new game start
+- **Text-to-Speech Accessibility**: Added Web Speech API integration for non-readers
+  - Purple speaker button (🔊) on quiz questions reads text aloud
+  - Slowed speech rate (0.8x) optimized for children
+  - Auto-cleanup prevents audio overlap and lingering playback
+- **Bug Fixes**:
+  - Fixed spacebar cannon firing by exporting Controls enum and typing KeyboardControls hook
+  - Fixed health bar display with explicit green indicator styling using div-based progress meter
 - **High Score System**: Added localStorage-based high score persistence displayed prominently on the menu screen
 - **Expanded Educational Content**: Added 16 new questions covering CVC words (cat, dog, pig), sight words (the, and, you, see, play), and blend sounds (bl, cr, st, tr, fl, gr)
 - **Achievement System**: Implemented 10 achievements tracking learning milestones:
