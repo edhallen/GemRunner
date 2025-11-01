@@ -6,6 +6,30 @@ Tank Reader is an educational game that combines reading comprehension challenge
 
 ## Recent Changes (November 1, 2025)
 
+- **Name Entry & Personalization System**: Added player identification and personalized experience
+  - New name_entry phase as first screen when starting the game
+  - NameEntry component with form validation (max 20 characters)
+  - Player name persists throughout game session and appears in:
+    - MenuScreen: "Welcome back, [Name]!"
+    - QuizScreen: "[Name], listen carefully!"
+    - GameHUD: Player name displayed during gameplay
+    - LevelComplete: "EXCELLENT WORK, [NAME]!"
+    - GameOver: Personalized win/lose messages
+  - Name resets only on full game reset
+- **Lesson Points Reset Per Level**: Children must earn 10 new lesson points for each level
+  - Lesson points reset to 0 when advancing to next level
+  - Ensures educational engagement at every stage
+  - Maintains learning focus throughout progression
+- **Enhanced Quiz UI for Accessibility**:
+  - Audio button enlarged to 80×80px for easier clicking
+  - Question text removed above answer options (just show audio button)
+  - Cleaner, more focused interface for young learners
+  - "[Name], listen carefully!" prompt for personalization
+- **Increased Level Difficulty**: Significantly harder progression
+  - Enemy count: 5→7→9→10→10 (was 3→4→5→6→6)
+  - Enemy health: 55→70→85→100→115 (was 40→50→60→70→80)
+  - Enemy speed: 1.0→1.3→1.6→1.9→2.2 (was 0.7→0.9→1.1→1.3→1.5)
+  - More challenging gameplay requiring strategic thinking
 - **Word-Based Quiz System**: Complete redesign of educational content
   - Replaced all letter recognition questions with 38 word-based questions (2-6 letters)
   - Format: "Which word is CAT?" with similar-looking options (BAT, RAT, HAT)
@@ -21,7 +45,6 @@ Tank Reader is an educational game that combines reading comprehension challenge
   - Added lessonPoints tracking in useTankGame store
   - Quiz screen loops continuously until 10 points earned
   - Visual progress bar and counter displayed at bottom of quiz screen
-  - Resets on new game start
 - **Text-to-Speech Accessibility**: Added Web Speech API integration for non-readers
   - Purple speaker button (🔊) on quiz questions reads words aloud
   - Slowed speech rate (0.8x) optimized for children
