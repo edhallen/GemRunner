@@ -6,17 +6,29 @@ Tank Reader is an educational game that combines reading comprehension challenge
 
 ## Recent Changes (November 1, 2025)
 
+- **Word-Based Quiz System**: Complete redesign of educational content
+  - Replaced all letter recognition questions with 38 word-based questions (2-6 letters)
+  - Format: "Which word is CAT?" with similar-looking options (BAT, RAT, HAT)
+  - Covers all 26 letters across 5 difficulty levels
+  - Text-to-speech now reads just the word (e.g., "cat") instead of the full question
+- **Negative Scoring**: Incorrect answers now subtract 1 lesson point (can go negative)
+  - Encourages careful reading and listening
+  - Maintains 10-point requirement for gameplay access
+- **Explosion Effects**: Visual feedback when bullets hit enemies
+  - Expanding orange/yellow circles that fade over 500ms
+  - Enhances game feel and feedback
 - **Lesson Points System**: Implemented educational gate requiring 10 correct quiz answers before gameplay access
-  - Added lessonPoints tracking in useTankGame store (1 point per correct answer)
+  - Added lessonPoints tracking in useTankGame store
   - Quiz screen loops continuously until 10 points earned
   - Visual progress bar and counter displayed at bottom of quiz screen
   - Resets on new game start
 - **Text-to-Speech Accessibility**: Added Web Speech API integration for non-readers
-  - Purple speaker button (🔊) on quiz questions reads text aloud
+  - Purple speaker button (🔊) on quiz questions reads words aloud
   - Slowed speech rate (0.8x) optimized for children
   - Auto-cleanup prevents audio overlap and lingering playback
 - **Bug Fixes**:
-  - Fixed spacebar cannon firing by exporting Controls enum and typing KeyboardControls hook
+  - Fixed spacebar cannon firing with refactored bullet creation logic
+  - Fixed quiz progression to properly advance after reaching 10 points
   - Fixed health bar display with explicit green indicator styling using div-based progress meter
 - **High Score System**: Added localStorage-based high score persistence displayed prominently on the menu screen
 - **Expanded Educational Content**: Added 16 new questions covering CVC words (cat, dog, pig), sight words (the, and, you, see, play), and blend sounds (bl, cr, st, tr, fl, gr)
