@@ -1,73 +1,46 @@
-import { Canvas } from "@react-three/fiber";
-import { Suspense, useEffect, useState } from "react";
 import { KeyboardControls } from "@react-three/drei";
-// import { useAudio } from "./lib/stores/useAudio";
+import { useTankGame } from "./lib/stores/useTankGame";
+import { MenuScreen } from "./components/MenuScreen";
+import { QuizScreen } from "./components/QuizScreen";
+import { TankSelection } from "./components/TankSelection";
+import { TankBattle } from "./components/TankBattle";
+import { LevelComplete } from "./components/LevelComplete";
+import { GameOver } from "./components/GameOver";
+import { SoundManager } from "./components/SoundManager";
 import "@fontsource/inter";
 
-// Import our game components
+enum Controls {
+  forward = 'forward',
+  back = 'back',
+  left = 'left',
+  right = 'right',
+  shoot = 'shoot',
+}
 
-// Define control keys for the game
-// const controls = [
-//   { name: "forward", keys: ["KeyW", "ArrowUp"] },
-//   { name: "backward", keys: ["KeyS", "ArrowDown"] },
-//   { name: "leftward", keys: ["KeyA", "ArrowLeft"] },
-//   { name: "rightward", keys: ["KeyD", "ArrowRight"] },
-//   { name: "punch", keys: ["KeyJ"] },
-//   { name: "kick", keys: ["KeyK"] },
-//   { name: "block", keys: ["KeyL"] },
-//   { name: "special", keys: ["Space"] },
-// ];
+const controls = [
+  { name: Controls.forward, keys: ["ArrowUp", "KeyW"] },
+  { name: Controls.back, keys: ["ArrowDown", "KeyS"] },
+  { name: Controls.left, keys: ["ArrowLeft", "KeyA"] },
+  { name: Controls.right, keys: ["ArrowRight", "KeyD"] },
+  { name: Controls.shoot, keys: ["Space"] },
+];
 
-// Main App component
 function App() {
-  //const { gamePhase } = useFighting();
-  const [showCanvas, setShowCanvas] = useState(false);
-
-  // Show the canvas once everything is loaded
-  useEffect(() => {
-    setShowCanvas(true);
-  }, []);
+  const { phase } = useTankGame();
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}/>
-    // {showCanvas && (
-    //   <KeyboardControls map={controls}>
-    //     {gamePhase === 'menu' && <Menu />}
-
-    //     {gamePhase === 'character_selection' && <CharacterSelection />}
-
-    //     {(gamePhase === 'fighting' || gamePhase === 'round_end' || gamePhase === 'match_end') && (
-    //       <>
-    //         <Canvas
-    //           shadows
-    //           camera={{
-    //             position: [0, 2, 8],
-    //             fov: 45,
-    //             near: 0.1,
-    //             far: 1000
-    //           }}
-    //           gl={{
-    //             antialias: true,
-    //             powerPreference: "default"
-    //           }}
-    //         >
-    //           <color attach="background" args={["#111111"]} />
-
-    //           {/* Lighting */}
-    //           <Lights />
-
-    //           <Suspense fallback={null}>
-    //           </Suspense>
-    //         </Canvas>
-    //         <GameUI />
-    //       </>
-    //     )}
-
-    //     <ShortcutManager />
-    //     <SoundManager />
-    //   </KeyboardControls>
-    // )}
-    //</div>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      <KeyboardControls map={controls}>
+        {phase === 'menu' && <MenuScreen />}
+        {phase === 'quiz' && <QuizScreen />}
+        {phase === 'tank_selection' && <TankSelection />}
+        {phase === 'playing' && <TankBattle />}
+        {phase === 'level_complete' && <LevelComplete />}
+        {phase === 'game_over' && <GameOver />}
+        
+        <SoundManager />
+      </KeyboardControls>
+    </div>
   );
 }
 
