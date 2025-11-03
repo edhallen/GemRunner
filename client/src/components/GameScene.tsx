@@ -60,9 +60,9 @@ export function GameScene() {
   const [explosions, setExplosions] = useState<Explosion[]>([]);
 
   useEffect(() => {
-    // Increased difficulty: more enemies, higher health, faster speed
+    // Enemies: start at 2 and increase by 1 each level (2, 3, 4, 5, 6)
     // Enemies now spawn on the RIGHT side (positive X)
-    const enemyCount = Math.min(3 + currentLevel * 2, 10);
+    const enemyCount = 1 + currentLevel;
     const newEnemies = Array.from({ length: enemyCount }, (_, i) => ({
       id: `enemy-${i}-${Date.now()}`,
       x: 8 + Math.random() * 2,

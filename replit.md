@@ -6,6 +6,15 @@ Tank Reader is an educational game that combines reading comprehension challenge
 
 ## Recent Changes (November 3, 2025)
 
+- **Horizontal Tank Battle Orientation**: Complete redesign from vertical to horizontal gameplay
+  - Player spawns on LEFT side (-8, 0), enemies spawn on RIGHT side (8+, random Y)
+  - Player shoots RIGHT (positive X direction), enemies shoot LEFT toward player
+  - Controls: WASD/Arrow keys for horizontal/vertical movement, Space to shoot
+  - Pixel art tank sprites rendered using Three.js sprites with custom tank images
+  - Custom desert background with pixel art mountains and terrain
+- **Enemy Count Adjustment**: Reduced and simplified progression
+  - Enemy count: 2→3→4→5→6 (was 5→7→9→10→10)
+  - More balanced difficulty curve for young learners
 - **Lowercase Word Display**: All quiz words now display in lowercase for better readability
 - **Progressive Lesson Requirements**: Points required increase per level (5→6→7→8→9) instead of fixed 10
 - **Random Answer Options**: Each question shows 3-9 randomized answer choices (was fixed at 6)
