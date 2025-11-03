@@ -4,7 +4,20 @@
 
 Tank Reader is an educational game that combines reading comprehension challenges with tank battle gameplay. The application is designed for children ages 5-7 to learn letter recognition, letter sounds, letter combinations, CVC words, sight words, and blend sounds through an engaging arcade-style experience. Players answer reading questions, select tanks, and battle enemies across progressive levels, earning points, unlocking achievements, and advancing through increasingly difficult stages.
 
-## Recent Changes (November 1, 2025)
+## Recent Changes (November 3, 2025)
+
+- **Lowercase Word Display**: All quiz words now display in lowercase for better readability
+- **Progressive Lesson Requirements**: Points required increase per level (5→6→7→8→9) instead of fixed 10
+- **Random Answer Options**: Each question shows 3-9 randomized answer choices (was fixed at 6)
+  - Flexible grid layout adapts to number of options (2 or 3 columns)
+- **Massively Expanded Word Bank**: 250 unique words (was 104)
+  - 50 words per level, organized by difficulty
+  - High-frequency English words for 6-year-olds (the, is, go, get, see, make, etc.)
+  - Star Wars: A New Hope vocabulary (war, force, power, hope, rebel, empire, battle, fight, rescue, escape, attack, master, hero, soldier, shield, weapon, mission, save, danger, brave, freedom, peace, galaxy, planet, destroy, princess, captain, command, protect)
+  - Common sight words, verbs, nouns, and adjectives
+  - Progressive difficulty from simple 2-3 letter words to complex multi-syllable words
+
+## Previous Changes (November 1, 2025)
 
 - **Name Entry & Personalization System**: Added player identification and personalized experience
   - New name_entry phase as first screen when starting the game
