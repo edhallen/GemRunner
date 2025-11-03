@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useTankGame } from "@/lib/stores/useTankGame";
+import { useTankGame, getRequiredLessonPoints } from "@/lib/stores/useTankGame";
 import { Button } from "@/components/ui/button";
-
-const REQUIRED_LESSON_POINTS = 10;
 
 export function QuizScreen() {
   const { currentQuestion, answerQuestion, setPhase, lessonPoints, currentLevel, playerName } = useTankGame();
@@ -46,6 +44,8 @@ export function QuizScreen() {
     return null;
   }
 
+  const requiredPoints = getRequiredLessonPoints(currentLevel);
+
   const handleAnswer = (answer: string) => {
     if (showFeedback) return;
     
@@ -61,6 +61,10 @@ export function QuizScreen() {
       setPhase("tank_selection");
     }, 2000);
   };
+
+  // Determine grid columns based on number of options
+  const numOptions = currentQuestion.options.length;
+  const gridCols = numOptions <= 4 ? 'grid-cols-2' : numOptions <= 6 ? 'grid-cols-3' : 'grid-cols-3';
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-blue-900 to-blue-700">
@@ -85,7 +89,7 @@ export function QuizScreen() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className={`grid ${gridCols} gap-4`}>
           {currentQuestion.options.map((option, index) => (
             <Button
               key={index}
@@ -101,7 +105,7 @@ export function QuizScreen() {
                 }
               `}
             >
-              {option}
+              {option.toLowerCase()}
             </Button>
           ))}
         </div>
@@ -115,18 +119,18 @@ export function QuizScreen() {
         <div className="mt-8 pt-6 border-t-4 border-yellow-400">
           <div className="text-center mb-3">
             <p className="text-xl font-bold text-blue-900">
-              Lesson Progress: {lessonPoints} / {REQUIRED_LESSON_POINTS} points
+              Lesson Progress: {lessonPoints} / {requiredPoints} points
             </p>
             <p className="text-sm text-gray-600 mt-1">
-              {REQUIRED_LESSON_POINTS - lessonPoints > 0 
-                ? `${REQUIRED_LESSON_POINTS - lessonPoints} more to unlock the game!` 
+              {requiredPoints - lessonPoints > 0 
+                ? `${requiredPoints - lessonPoints} more to unlock the game!` 
                 : "Ready to play! 🎮"}
             </p>
           </div>
           <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-gray-400">
             <div 
               className="h-full transition-all duration-500 bg-gradient-to-r from-green-400 to-green-600"
-              style={{ width: `${Math.min((lessonPoints / REQUIRED_LESSON_POINTS) * 100, 100)}%` }}
+              style={{ width: `${Math.min((lessonPoints / requiredPoints) * 100, 100)}%` }}
             />
           </div>
         </div>

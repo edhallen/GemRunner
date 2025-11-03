@@ -159,6 +159,11 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return newArray;
 };
 
+// Get required lesson points for a given level
+export const getRequiredLessonPoints = (level: number): number => {
+  return 4 + level; // Level 1 = 5, Level 2 = 6, Level 3 = 7, Level 4 = 8, Level 5 = 9
+};
+
 // Generate a random question for a given level
 const getQuestionForLevel = (level: number): Question | null => {
   const levelKey = `level${level}` as keyof typeof WORD_BANK;
@@ -169,8 +174,12 @@ const getQuestionForLevel = (level: number): Question | null => {
   // Pick a random word from the level
   const correctWord = words[Math.floor(Math.random() * words.length)];
   
-  // Generate 5 distractor words
-  const distractors = generateDistractors(correctWord, 5);
+  // Random number of options between 3 and 9
+  const numOptions = Math.floor(Math.random() * 7) + 3; // 3-9 inclusive
+  const numDistractors = numOptions - 1; // Subtract 1 for the correct answer
+  
+  // Generate random number of distractor words
+  const distractors = generateDistractors(correctWord, numDistractors);
   
   // Combine correct answer with distractors and shuffle
   const allOptions = shuffleArray([correctWord, ...distractors]);
@@ -230,12 +239,13 @@ export const useTankGame = create<TankGameState>()(
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
-      const { lessonPoints } = get();
+      const { lessonPoints, currentLevel } = get();
+      const requiredPoints = getRequiredLessonPoints(currentLevel);
       
-      // Gate tank selection and playing behind 10 lesson points
-      if ((phase === "tank_selection" || phase === "playing") && lessonPoints < 10) {
-        console.log("Need 10 lesson points to play! Current:", lessonPoints);
-        const question = getQuestionForLevel(get().currentLevel);
+      // Gate tank selection and playing behind required lesson points for the level
+      if ((phase === "tank_selection" || phase === "playing") && lessonPoints < requiredPoints) {
+        console.log(`Need ${requiredPoints} lesson points to play! Current:`, lessonPoints);
+        const question = getQuestionForLevel(currentLevel);
         set({ 
           phase: "quiz", 
           currentQuestion: question,
