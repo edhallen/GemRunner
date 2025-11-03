@@ -8,7 +8,7 @@ const TANKS = [
     speed: "★★★★☆",
     power: "★★☆☆☆",
     armor: "★★☆☆☆",
-    color: "#4ade80",
+    image: "/tanks/tank1.png",
     description: "Fast and nimble!"
   },
   {
@@ -17,7 +17,7 @@ const TANKS = [
     speed: "★★★☆☆",
     power: "★★★☆☆",
     armor: "★★★☆☆",
-    color: "#60a5fa",
+    image: "/tanks/tank2.png",
     description: "Balanced tank"
   },
   {
@@ -26,7 +26,7 @@ const TANKS = [
     speed: "★★☆☆☆",
     power: "★★★★☆",
     armor: "★★★★★",
-    color: "#f87171",
+    image: "/tanks/tank3.png",
     description: "Tough and strong!"
   },
   {
@@ -35,7 +35,7 @@ const TANKS = [
     speed: "★★★★★",
     power: "★★★☆☆",
     armor: "★☆☆☆☆",
-    color: "#fbbf24",
+    image: "/tanks/tank4.png",
     description: "Lightning fast!"
   }
 ];
@@ -66,11 +66,13 @@ export function TankSelection() {
               onClick={() => handleSelectTank(tank.type)}
             >
               <div className="text-center mb-4">
-                <div
-                  className="w-24 h-24 mx-auto mb-3 rounded border-4 border-black flex items-center justify-center"
-                  style={{ backgroundColor: tank.color }}
-                >
-                  <div className="text-6xl">🛡️</div>
+                <div className="w-32 h-32 mx-auto mb-3 flex items-center justify-center bg-gray-900 rounded border-4 border-gray-700">
+                  <img 
+                    src={tank.image} 
+                    alt={tank.name}
+                    className="w-full h-full object-contain pixelated"
+                    style={{ imageRendering: 'pixelated' }}
+                  />
                 </div>
                 <h3 className="text-2xl font-bold text-white font-mono mb-2">
                   {tank.name}

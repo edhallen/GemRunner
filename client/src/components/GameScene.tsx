@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTankGame, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
-import { useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls, useTexture } from "@react-three/drei";
 import { Controls } from "@/App";
 
 interface Explosion {
@@ -12,11 +12,11 @@ interface Explosion {
   startTime: number;
 }
 
-const TANK_COLORS: Record<TankType, string> = {
-  light: "#4ade80",
-  medium: "#60a5fa",
-  heavy: "#f87171",
-  speed: "#fbbf24"
+const TANK_IMAGES: Record<TankType, string> = {
+  light: "/tanks/tank1.png",
+  medium: "/tanks/tank2.png",
+  heavy: "/tanks/tank3.png",
+  speed: "/tanks/tank4.png"
 };
 
 const TANK_SPEEDS: Record<TankType, number> = {
@@ -54,18 +54,19 @@ export function GameScene() {
     activePowerUps,
   } = useTankGame();
 
-  const playerRef = useRef<THREE.Mesh>(null);
+  const playerRef = useRef<THREE.Sprite>(null);
   const lastShotTime = useRef(0);
   const [, getKeys] = useKeyboardControls<Controls>();
   const [explosions, setExplosions] = useState<Explosion[]>([]);
 
   useEffect(() => {
     // Increased difficulty: more enemies, higher health, faster speed
+    // Enemies now spawn on the RIGHT side (positive X)
     const enemyCount = Math.min(3 + currentLevel * 2, 10);
     const newEnemies = Array.from({ length: enemyCount }, (_, i) => ({
       id: `enemy-${i}-${Date.now()}`,
-      x: (Math.random() - 0.5) * 18,
-      y: 8 + Math.random() * 4,
+      x: 8 + Math.random() * 2,
+      y: (Math.random() - 0.5) * 16,
       health: 40 + currentLevel * 15,
       speed: 0.7 + currentLevel * 0.3,
       lastShot: 0,
@@ -97,13 +98,14 @@ export function GameScene() {
     let newX = playerX;
     let newY = playerY;
 
+    // Flipped controls: up/down for vertical movement, left/right for horizontal
     if (keys.forward) {
       newY += speed;
-      console.log("Moving forward");
+      console.log("Moving up");
     }
     if (keys.back) {
       newY -= speed;
-      console.log("Moving back");
+      console.log("Moving down");
     }
     if (keys.left) {
       newX -= speed;
@@ -121,7 +123,7 @@ export function GameScene() {
       updatePlayerPosition(newX, newY);
     }
 
-    // Shooting logic - create new bullet to be added to finalBullets later
+    // Shooting logic - player shoots RIGHT (positive X direction)
     let newPlayerBullet = null;
     if (keys.shoot) {
       console.log("Shoot key detected!");
@@ -132,10 +134,10 @@ export function GameScene() {
         lastShotTime.current = now;
         newPlayerBullet = {
           id: `bullet-${now}`,
-          x: playerX,
-          y: playerY + 0.5,
-          vx: 0,
-          vy: 10,
+          x: playerX + 0.5,
+          y: playerY,
+          vx: 10,
+          vy: 0,
           owner: "player" as const,
         };
         console.log("Created new bullet");
@@ -226,15 +228,16 @@ export function GameScene() {
       }
 
       const now = Date.now();
-      if (now - enemy.lastShot > 2000 && distance < 8) {
+      if (now - enemy.lastShot > 2000 && distance < 15) {
         updateEnemy(enemy.id, { lastShot: now });
         
+        // Enemies shoot LEFT toward the player (negative X)
         const bulletVx = (dx / distance) * 5;
         const bulletVy = (dy / distance) * 5;
         
         finalBullets.push({
           id: `enemy-bullet-${now}-${enemy.id}`,
-          x: enemy.x,
+          x: enemy.x - 0.5,
           y: enemy.y,
           vx: bulletVx,
           vy: bulletVy,
@@ -264,6 +267,10 @@ export function GameScene() {
 
   if (!playerTank) return null;
 
+  // Load textures
+  const playerTankTexture = useTexture(TANK_IMAGES[playerTank]);
+  const enemyTankTexture = useTexture("/tanks/enemy-tank.png");
+
   return (
     <group>
       <mesh position={[0, 0, -1]}>
@@ -271,25 +278,18 @@ export function GameScene() {
         <meshBasicMaterial color="#0f172a" />
       </mesh>
 
-      <mesh position={[playerX, playerY, 0]} ref={playerRef}>
-        <boxGeometry args={[0.8, 1, 0.5]} />
-        <meshBasicMaterial color={TANK_COLORS[playerTank]} />
-      </mesh>
-      <mesh position={[playerX, playerY + 0.6, 0]}>
-        <boxGeometry args={[0.3, 0.4, 0.3]} />
-        <meshBasicMaterial color={TANK_COLORS[playerTank]} />
-      </mesh>
+      {/* Player Tank - now uses actual tank image */}
+      <sprite position={[playerX, playerY, 0]} ref={playerRef} scale={[2, 2, 1]}>
+        <spriteMaterial map={playerTankTexture} transparent={true} />
+      </sprite>
 
+      {/* Enemy Tanks - now use actual enemy tank image */}
       {enemies.map(enemy => (
         <group key={enemy.id}>
-          <mesh position={[enemy.x, enemy.y, 0]}>
-            <boxGeometry args={[0.8, 1, 0.5]} />
-            <meshBasicMaterial color="#dc2626" />
-          </mesh>
-          <mesh position={[enemy.x, enemy.y - 0.6, 0]}>
-            <boxGeometry args={[0.3, 0.4, 0.3]} />
-            <meshBasicMaterial color="#991b1b" />
-          </mesh>
+          <sprite position={[enemy.x, enemy.y, 0]} scale={[2, 2, 1]}>
+            <spriteMaterial map={enemyTankTexture} transparent={true} />
+          </sprite>
+          {/* Health bar */}
           <mesh position={[enemy.x, enemy.y + 1.2, 0]}>
             <planeGeometry args={[1, 0.2]} />
             <meshBasicMaterial color="#000000" />
