@@ -270,12 +270,13 @@ export function GameScene() {
   // Load textures
   const playerTankTexture = useTexture(TANK_IMAGES[playerTank]);
   const enemyTankTexture = useTexture("/tanks/enemy-tank.png");
+  const backgroundTexture = useTexture("/backgrounds/desert-background.png");
 
   return (
     <group>
       <mesh position={[0, 0, -1]}>
         <planeGeometry args={[20, 20]} />
-        <meshBasicMaterial color="#0f172a" />
+        <meshBasicMaterial map={backgroundTexture} />
       </mesh>
 
       {/* Player Tank - now uses actual tank image */}
