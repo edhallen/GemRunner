@@ -29,7 +29,7 @@ export function GameHUD() {
           />
         </div>
         <div className="text-purple-400 font-bold font-mono text-lg">
-          MISSILES: {missileCount}
+          MISSILES: ∞
         </div>
       </div>
 

@@ -484,12 +484,7 @@ export const useTankGame = create<TankGameState>()(
     },
 
     fireMissile: () => {
-      const { missileCount } = get();
-      if (missileCount > 0) {
-        set({ missileCount: missileCount - 1 });
-        return true;
-      }
-      return false;
+      return true;
     },
   }))
 );
