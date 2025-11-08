@@ -15,6 +15,11 @@ Tank Reader is an educational game that combines reading comprehension challenge
 - **Enemy Count Adjustment**: Reduced and simplified progression
   - Enemy count: 2→3→4→5→6 (was 5→7→9→10→10)
   - More balanced difficulty curve for young learners
+- **Improved Text-to-Speech Voice**: Enhanced voice quality and naturalness
+  - Automatic selection of highest-quality available voice (Google US English preferred)
+  - Natural pitch (1.0) instead of artificially high pitch
+  - Optimized speech rate (0.85) for clarity and naturalness
+  - Better pronunciation of words for young learners
 - **Lowercase Word Display**: All quiz words now display in lowercase for better readability
 - **Progressive Lesson Requirements**: Points required increase per level (5→6→7→8→9) instead of fixed 10
 - **Random Answer Options**: Each question shows 3-9 randomized answer choices (was fixed at 6)

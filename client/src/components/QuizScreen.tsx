@@ -10,11 +10,41 @@ export function QuizScreen() {
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
-    // Initialize speech synthesis
+    // Initialize speech synthesis with natural voice
     if ('speechSynthesis' in window) {
       synthRef.current = new SpeechSynthesisUtterance();
-      synthRef.current.rate = 0.8; // Slow down for kids
-      synthRef.current.pitch = 1.1;
+      synthRef.current.rate = 0.85; // Slightly slow for clarity
+      synthRef.current.pitch = 1.0; // Natural pitch
+      
+      // Wait for voices to load and select the best one
+      const setVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        
+        // Prioritize high-quality voices for children
+        // 1. Google US English (most natural)
+        // 2. Microsoft voices
+        // 3. Any en-US voice
+        const preferredVoice = 
+          voices.find(v => v.name.includes('Google US English')) ||
+          voices.find(v => v.name.includes('Google') && v.lang.startsWith('en-US')) ||
+          voices.find(v => v.name.includes('Samantha')) || // macOS high-quality voice
+          voices.find(v => v.name.includes('Microsoft Zira')) || // Windows female voice
+          voices.find(v => v.name.includes('Microsoft') && v.lang.startsWith('en-US')) ||
+          voices.find(v => v.lang.startsWith('en-US')) ||
+          voices.find(v => v.lang.startsWith('en'));
+        
+        if (preferredVoice && synthRef.current) {
+          synthRef.current.voice = preferredVoice;
+          console.log('Selected voice:', preferredVoice.name);
+        }
+      };
+      
+      // Voices might not be loaded immediately
+      if (window.speechSynthesis.getVoices().length > 0) {
+        setVoice();
+      } else {
+        window.speechSynthesis.addEventListener('voiceschanged', setVoice);
+      }
     }
     
     // Cleanup on unmount
