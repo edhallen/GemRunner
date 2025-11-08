@@ -69,29 +69,10 @@ export function TankSelection() {
                 <div className="w-32 h-32 mx-auto mb-3 flex items-center justify-center bg-gray-900 rounded border-4 border-gray-700">
                   <img 
                     src={tank.image} 
-                    alt={tank.name}
+                    alt={tank.type}
                     className="w-full h-full object-contain pixelated"
                     style={{ imageRendering: 'pixelated' }}
                   />
-                </div>
-                <h3 className="text-2xl font-bold text-white font-mono mb-2">
-                  {tank.name}
-                </h3>
-                <p className="text-sm text-gray-300 mb-3">{tank.description}</p>
-              </div>
-
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-white">
-                  <span className="font-bold">SPEED:</span>
-                  <span className="text-yellow-400">{tank.speed}</span>
-                </div>
-                <div className="flex justify-between text-white">
-                  <span className="font-bold">POWER:</span>
-                  <span className="text-yellow-400">{tank.power}</span>
-                </div>
-                <div className="flex justify-between text-white">
-                  <span className="font-bold">ARMOR:</span>
-                  <span className="text-yellow-400">{tank.armor}</span>
                 </div>
               </div>
 
