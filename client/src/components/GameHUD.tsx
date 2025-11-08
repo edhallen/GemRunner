@@ -2,7 +2,7 @@ import { useTankGame } from "@/lib/stores/useTankGame";
 import { Progress } from "@/components/ui/progress";
 
 export function GameHUD() {
-  const { score, playerHealth, maxHealth, currentLevel, playerName } = useTankGame();
+  const { score, playerHealth, maxHealth, currentLevel, playerName, missileCount } = useTankGame();
   const healthPercent = (playerHealth / maxHealth) * 100;
 
   return (
@@ -19,7 +19,7 @@ export function GameHUD() {
         <div className="text-white font-bold font-mono mb-2">
           HP: {playerHealth}/{maxHealth}
         </div>
-        <div className="w-48 h-4 bg-gray-700 rounded-full overflow-hidden border-2 border-gray-500">
+        <div className="w-48 h-4 bg-gray-700 rounded-full overflow-hidden border-2 border-gray-500 mb-3">
           <div 
             className="h-full transition-all duration-300"
             style={{
@@ -27,6 +27,9 @@ export function GameHUD() {
               background: healthPercent > 50 ? '#22c55e' : healthPercent > 25 ? '#eab308' : '#ef4444'
             }}
           />
+        </div>
+        <div className="text-purple-400 font-bold font-mono text-lg">
+          MISSILES: {missileCount}
         </div>
       </div>
 
@@ -43,6 +46,7 @@ export function GameHUD() {
         <div className="text-white font-mono text-sm space-y-1">
           <div>▲▼◄► MOVE</div>
           <div>SPACE SHOOT</div>
+          <div className="text-purple-400">M MISSILE</div>
         </div>
       </div>
     </div>

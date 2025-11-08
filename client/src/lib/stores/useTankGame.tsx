@@ -30,6 +30,7 @@ export interface Bullet {
   vx: number;
   vy: number;
   owner: "player" | "enemy";
+  isMissile?: boolean;
 }
 
 export type PowerUpType = "health" | "speed" | "rapid_fire";
@@ -66,6 +67,7 @@ interface TankGameState {
   enemiesDefeated: number;
   powerUpsCollected: number;
   lessonPoints: number;
+  missileCount: number;
 
   setPhase: (phase: GamePhase) => void;
   setPlayerName: (name: string) => void;
@@ -84,6 +86,7 @@ interface TankGameState {
   collectPowerUp: (id: string, type: PowerUpType) => void;
   updatePowerUps: () => void;
   healPlayer: (amount: number) => void;
+  fireMissile: () => boolean;
 }
 
 // Comprehensive word bank with 200+ words organized by difficulty
@@ -257,6 +260,7 @@ export const useTankGame = create<TankGameState>()(
     enemiesDefeated: 0,
     powerUpsCollected: 0,
     lessonPoints: 0,
+    missileCount: 3,
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
@@ -341,6 +345,7 @@ export const useTankGame = create<TankGameState>()(
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
           lessonPoints: 0, // Reset lesson points for new level
+          missileCount: 3, // Reset missiles for new level
         });
       }
     },
@@ -371,6 +376,7 @@ export const useTankGame = create<TankGameState>()(
         quizQuestionsAnswered: 0,
         quizCorrectAnswers: 0,
         lessonPoints: 0,
+        missileCount: 3,
       });
     },
 
@@ -475,6 +481,15 @@ export const useTankGame = create<TankGameState>()(
     healPlayer: (amount) => {
       const { playerHealth, maxHealth } = get();
       set({ playerHealth: Math.min(playerHealth + amount, maxHealth) });
+    },
+
+    fireMissile: () => {
+      const { missileCount } = get();
+      if (missileCount > 0) {
+        set({ missileCount: missileCount - 1 });
+        return true;
+      }
+      return false;
     },
   }))
 );

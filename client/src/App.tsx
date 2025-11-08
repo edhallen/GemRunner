@@ -16,6 +16,7 @@ export enum Controls {
   left = 'left',
   right = 'right',
   shoot = 'shoot',
+  missile = 'missile',
 }
 
 const controls = [
@@ -24,6 +25,7 @@ const controls = [
   { name: Controls.left, keys: ["ArrowLeft", "KeyA"] },
   { name: Controls.right, keys: ["ArrowRight", "KeyD"] },
   { name: Controls.shoot, keys: ["Space"] },
+  { name: Controls.missile, keys: ["KeyM"] },
 ];
 
 function App() {

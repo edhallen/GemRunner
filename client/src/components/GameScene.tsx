@@ -52,10 +52,13 @@ export function GameScene() {
     collectPowerUp,
     updatePowerUps,
     activePowerUps,
+    missileCount,
+    fireMissile,
   } = useTankGame();
 
   const playerRef = useRef<THREE.Sprite>(null);
   const lastShotTime = useRef(0);
+  const lastMissileTime = useRef(0);
   const [, getKeys] = useKeyboardControls<Controls>();
   const [explosions, setExplosions] = useState<Explosion[]>([]);
 
@@ -126,11 +129,9 @@ export function GameScene() {
     // Shooting logic - player shoots RIGHT (positive X direction)
     let newPlayerBullet = null;
     if (keys.shoot) {
-      console.log("Shoot key detected!");
       const now = Date.now();
       const fireRate = activePowerUps.has("rapid_fire") ? 200 : 500;
       if (now - lastShotTime.current > fireRate) {
-        console.log("Player shooting! Creating bullet at", playerX, playerY);
         lastShotTime.current = now;
         newPlayerBullet = {
           id: `bullet-${now}`,
@@ -140,9 +141,28 @@ export function GameScene() {
           vy: 0,
           owner: "player" as const,
         };
-        console.log("Created new bullet");
-      } else {
-        console.log("Shoot on cooldown");
+      }
+    }
+
+    // Missile firing logic - M key to fire missiles
+    if (keys.missile) {
+      const now = Date.now();
+      if (now - lastMissileTime.current > 1000) { // 1 second cooldown for missiles
+        if (fireMissile()) {
+          lastMissileTime.current = now;
+          newPlayerBullet = {
+            id: `missile-${now}`,
+            x: playerX + 0.5,
+            y: playerY,
+            vx: 12,
+            vy: 0,
+            owner: "player" as const,
+            isMissile: true,
+          };
+          console.log("Fired missile! Remaining:", missileCount - 1);
+        } else {
+          console.log("No missiles left!");
+        }
       }
     }
 
@@ -177,7 +197,8 @@ export function GameScene() {
           
           if (distance < 0.8) {
             bulletsToRemove.add(bullet.id);
-            const newHealth = enemy.health - 10;
+            const damage = bullet.isMissile ? 50 : 10;
+            const newHealth = enemy.health - damage;
             
             // Create explosion effect
             setExplosions(prev => [...prev, {
@@ -302,12 +323,18 @@ export function GameScene() {
         </group>
       ))}
 
-      {bullets.map(bullet => (
-        <mesh key={bullet.id} position={[bullet.x, bullet.y, 0]}>
-          <sphereGeometry args={[0.15, 8, 8]} />
-          <meshBasicMaterial color={bullet.owner === "player" ? "#fbbf24" : "#ef4444"} />
-        </mesh>
-      ))}
+      {bullets.map(bullet => {
+        const isMissile = bullet.isMissile;
+        const size = isMissile ? 0.3 : 0.15;
+        const color = isMissile ? "#a855f7" : (bullet.owner === "player" ? "#fbbf24" : "#ef4444");
+        
+        return (
+          <mesh key={bullet.id} position={[bullet.x, bullet.y, 0]}>
+            <sphereGeometry args={[size, 8, 8]} />
+            <meshBasicMaterial color={color} />
+          </mesh>
+        );
+      })}
 
       {powerUps.map(powerUp => (
         <group key={powerUp.id} position={[powerUp.x, powerUp.y, 0]}>
