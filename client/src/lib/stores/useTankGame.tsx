@@ -92,6 +92,7 @@ interface TankGameState {
   platformerIsGrounded: boolean;
   platformerEnemies: PlatformerEnemy[];
   platformerGems: Gem[];
+  platformerMissiles: Bullet[];
   platformerReachedFlag: boolean;
   
   // Shared state
@@ -134,6 +135,8 @@ interface TankGameState {
   collectGem: (id: string) => void;
   reachFlag: () => void;
   initializePlatformerLevel: () => void;
+  setPlatformerMissiles: (missiles: Bullet[]) => void;
+  firePlatformerMissile: (x: number, y: number) => void;
 }
 
 // Comprehensive word bank with 200+ words organized by difficulty
@@ -312,6 +315,7 @@ export const useTankGame = create<TankGameState>()(
     platformerIsGrounded: false,
     platformerEnemies: [],
     platformerGems: [],
+    platformerMissiles: [],
     platformerReachedFlag: false,
     
     // Shared state
@@ -423,6 +427,7 @@ export const useTankGame = create<TankGameState>()(
           platformerIsGrounded: false,
           platformerEnemies: [],
           platformerGems: [],
+          platformerMissiles: [],
           platformerReachedFlag: false,
           currentQuestion: getQuestionForLevel(newLevel),
           quizQuestionsAnswered: 0,
@@ -460,6 +465,7 @@ export const useTankGame = create<TankGameState>()(
         platformerIsGrounded: false,
         platformerEnemies: [],
         platformerGems: [],
+        platformerMissiles: [],
         platformerReachedFlag: false,
         enemiesDefeated: 0,
         powerUpsCollected: 0,
@@ -639,6 +645,7 @@ export const useTankGame = create<TankGameState>()(
         platformerPlayerVX: 0,
         platformerPlayerVY: 0,
         platformerIsGrounded: false,
+        platformerMissiles: [],
         platformerReachedFlag: false,
       });
 
@@ -674,6 +681,26 @@ export const useTankGame = create<TankGameState>()(
         platformerGems: gems,
         platformerEnemies: enemies,
       });
+    },
+
+    setPlatformerMissiles: (missiles) => {
+      set({ platformerMissiles: missiles });
+    },
+
+    firePlatformerMissile: (x, y) => {
+      const newMissile: Bullet = {
+        id: `missile-${Date.now()}-${Math.random()}`,
+        x: x,
+        y: y,
+        vx: 0,
+        vy: 1, // Upward velocity (will be multiplied by speed in scene)
+        owner: "player",
+        isMissile: true,
+      };
+
+      set((state) => ({
+        platformerMissiles: [...state.platformerMissiles, newMissile],
+      }));
     },
   }))
 );

@@ -5,10 +5,11 @@ import { useEffect, useRef } from "react";
 import { Controls } from "@/App";
 
 const GRAVITY = -15;
-const JUMP_VELOCITY = 7;
+const JUMP_VELOCITY = 14;
 const MOVE_SPEED = 4;
 const GROUND_Y = 0;
 const PLAYER_SIZE = 0.5;
+const MISSILE_SPEED = 12;
 
 export function SideScrollerScene() {
   const {
@@ -19,16 +20,20 @@ export function SideScrollerScene() {
     platformerIsGrounded,
     platformerEnemies,
     platformerGems,
+    platformerMissiles,
     platformerReachedFlag,
     updatePlatformerPlayer,
     updatePlatformerEnemy,
     defeatPlatformerEnemy,
     collectGem,
     reachFlag,
+    firePlatformerMissile,
+    setPlatformerMissiles,
   } = useTankGame();
 
   const [, getKeys] = useKeyboardControls<Controls>();
   const lastJumpRef = useRef(0);
+  const lastMissileRef = useRef(0);
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -52,6 +57,12 @@ export function SideScrollerScene() {
     if (keys.shoot && platformerIsGrounded && Date.now() - lastJumpRef.current > 500) {
       newVY = JUMP_VELOCITY;
       lastJumpRef.current = Date.now();
+    }
+
+    // Fire missile with 'm' key
+    if (keys.missile && Date.now() - lastMissileRef.current > 300) {
+      firePlatformerMissile(newX, newY);
+      lastMissileRef.current = Date.now();
     }
 
     // Apply gravity
@@ -127,6 +138,35 @@ export function SideScrollerScene() {
     if (newX > 45 && !platformerReachedFlag) {
       reachFlag();
     }
+
+    // Update missiles
+    const updatedMissiles = platformerMissiles
+      .map(missile => ({
+        ...missile,
+        y: missile.y + MISSILE_SPEED * delta,
+      }))
+      .filter(missile => {
+        // Remove missiles that are off-screen
+        if (missile.y > 15) return false;
+
+        // Check collision with enemies
+        for (const enemy of platformerEnemies) {
+          if (!enemy.isAlive) continue;
+
+          const dx = missile.x - enemy.x;
+          const dy = missile.y - enemy.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < 0.8) {
+            defeatPlatformerEnemy(enemy.id);
+            return false; // Remove missile after hit
+          }
+        }
+
+        return true; // Keep missile
+      });
+
+    setPlatformerMissiles(updatedMissiles);
   });
 
   return (
@@ -190,6 +230,14 @@ export function SideScrollerScene() {
           <meshBasicMaterial color="#00FF00" side={2} />
         </mesh>
       </group>
+
+      {/* Missiles */}
+      {platformerMissiles.map(missile => (
+        <mesh key={missile.id} position={[missile.x, missile.y, 0]}>
+          <boxGeometry args={[0.2, 0.5, 0.2]} />
+          <meshBasicMaterial color="#FF6600" />
+        </mesh>
+      ))}
 
       {/* Lighting */}
       <ambientLight intensity={0.8} />
