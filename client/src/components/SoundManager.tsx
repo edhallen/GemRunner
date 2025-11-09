@@ -30,7 +30,7 @@ export function SoundManager() {
     const bgMusic = useAudio.getState().backgroundMusic;
     if (!bgMusic) return;
 
-    if (phase === "playing" && !isMuted) {
+    if ((phase === "playing_tank" || phase === "playing_platformer") && !isMuted) {
       bgMusic.play().catch(() => {});
     } else {
       bgMusic.pause();

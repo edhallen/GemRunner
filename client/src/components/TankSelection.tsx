@@ -45,7 +45,7 @@ export function TankSelection() {
 
   const handleSelectTank = (tank: TankType) => {
     selectTank(tank);
-    setPhase("playing");
+    setPhase("playing_tank");
   };
 
   return (

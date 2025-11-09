@@ -87,8 +87,8 @@ export function QuizScreen() {
     setTimeout(() => {
       setShowFeedback(false);
       setSelectedAnswer(null);
-      // Always try to advance to tank selection - setPhase will gate if not enough points
-      setPhase("tank_selection");
+      // Always try to advance to game mode selection - setPhase will gate if not enough points
+      setPhase("game_mode_selection");
     }, 2000);
   };
 

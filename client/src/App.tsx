@@ -3,8 +3,10 @@ import { useTankGame } from "./lib/stores/useTankGame";
 import { NameEntry } from "./components/NameEntry";
 import { MenuScreen } from "./components/MenuScreen";
 import { QuizScreen } from "./components/QuizScreen";
+import { GameModeSelection } from "./components/GameModeSelection";
 import { TankSelection } from "./components/TankSelection";
 import { TankBattle } from "./components/TankBattle";
+import { SideScroller } from "./components/SideScroller";
 import { LevelComplete } from "./components/LevelComplete";
 import { GameOver } from "./components/GameOver";
 import { SoundManager } from "./components/SoundManager";
@@ -37,8 +39,10 @@ function App() {
         {phase === 'name_entry' && <NameEntry />}
         {phase === 'menu' && <MenuScreen />}
         {phase === 'quiz' && <QuizScreen />}
+        {phase === 'game_mode_selection' && <GameModeSelection />}
         {phase === 'tank_selection' && <TankSelection />}
-        {phase === 'playing' && <TankBattle />}
+        {phase === 'playing_tank' && <TankBattle />}
+        {phase === 'playing_platformer' && <SideScroller />}
         {phase === 'level_complete' && <LevelComplete />}
         {phase === 'game_over' && <GameOver />}
         

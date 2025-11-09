@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
-export type GamePhase = "name_entry" | "menu" | "quiz" | "tank_selection" | "playing" | "level_complete" | "game_over";
+export type GamePhase = "name_entry" | "menu" | "quiz" | "game_mode_selection" | "tank_selection" | "playing_tank" | "playing_platformer" | "level_complete" | "game_over";
+
+export type GameMode = "tank" | "platformer";
 
 export type TankType = "light" | "medium" | "heavy" | "speed";
 
@@ -43,12 +45,33 @@ export interface PowerUp {
   active: boolean;
 }
 
+// Platformer-specific types
+export interface PlatformerEnemy {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  patrolLeft: number;
+  patrolRight: number;
+  isAlive: boolean;
+}
+
+export interface Gem {
+  id: string;
+  x: number;
+  y: number;
+  collected: boolean;
+}
+
 interface TankGameState {
   phase: GamePhase;
   playerName: string;
+  selectedGameMode: GameMode | null;
   currentLevel: number;
   score: number;
   highScore: number;
+  
+  // Tank-specific state
   playerHealth: number;
   maxHealth: number;
   playerTank: TankType | null;
@@ -59,6 +82,19 @@ interface TankGameState {
   powerUps: PowerUp[];
   activePowerUps: Set<PowerUpType>;
   powerUpEndTimes: Map<PowerUpType, number>;
+  missileCount: number;
+  
+  // Platformer-specific state
+  platformerPlayerX: number;
+  platformerPlayerY: number;
+  platformerPlayerVX: number;
+  platformerPlayerVY: number;
+  platformerIsGrounded: boolean;
+  platformerEnemies: PlatformerEnemy[];
+  platformerGems: Gem[];
+  platformerReachedFlag: boolean;
+  
+  // Shared state
   currentQuestion: Question | null;
   questionsAnswered: number;
   correctAnswers: number;
@@ -67,14 +103,16 @@ interface TankGameState {
   enemiesDefeated: number;
   powerUpsCollected: number;
   lessonPoints: number;
-  missileCount: number;
 
   setPhase: (phase: GamePhase) => void;
   setPlayerName: (name: string) => void;
+  selectGameMode: (mode: GameMode) => void;
   selectTank: (tank: TankType) => void;
   answerQuestion: (answer: string) => boolean;
   nextLevel: () => void;
   resetGame: () => void;
+  
+  // Tank methods
   updatePlayerPosition: (x: number, y: number) => void;
   takeDamage: (amount: number) => void;
   addScore: (points: number) => void;
@@ -87,6 +125,15 @@ interface TankGameState {
   updatePowerUps: () => void;
   healPlayer: (amount: number) => void;
   fireMissile: () => boolean;
+  
+  // Platformer methods
+  updatePlatformerPlayer: (x: number, y: number, vx: number, vy: number, grounded: boolean) => void;
+  setPlatformerEnemies: (enemies: PlatformerEnemy[]) => void;
+  updatePlatformerEnemy: (id: string, updates: Partial<PlatformerEnemy>) => void;
+  defeatPlatformerEnemy: (id: string) => void;
+  collectGem: (id: string) => void;
+  reachFlag: () => void;
+  initializePlatformerLevel: () => void;
 }
 
 // Comprehensive word bank with 200+ words organized by difficulty
@@ -239,9 +286,12 @@ export const useTankGame = create<TankGameState>()(
   subscribeWithSelector((set, get) => ({
     phase: "name_entry",
     playerName: "",
+    selectedGameMode: null,
     currentLevel: 1,
     score: 0,
     highScore: loadHighScore(),
+    
+    // Tank state
     playerHealth: 100,
     maxHealth: 100,
     playerTank: null,
@@ -252,6 +302,19 @@ export const useTankGame = create<TankGameState>()(
     powerUps: [],
     activePowerUps: new Set(),
     powerUpEndTimes: new Map(),
+    missileCount: 3,
+    
+    // Platformer state
+    platformerPlayerX: 0,
+    platformerPlayerY: 0,
+    platformerPlayerVX: 0,
+    platformerPlayerVY: 0,
+    platformerIsGrounded: false,
+    platformerEnemies: [],
+    platformerGems: [],
+    platformerReachedFlag: false,
+    
+    // Shared state
     currentQuestion: null,
     questionsAnswered: 0,
     correctAnswers: 0,
@@ -260,15 +323,14 @@ export const useTankGame = create<TankGameState>()(
     enemiesDefeated: 0,
     powerUpsCollected: 0,
     lessonPoints: 0,
-    missileCount: 3,
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
       const { lessonPoints, currentLevel } = get();
       const requiredPoints = getRequiredLessonPoints(currentLevel);
       
-      // Gate tank selection and playing behind required lesson points for the level
-      if ((phase === "tank_selection" || phase === "playing") && lessonPoints < requiredPoints) {
+      // Gate game mode selection and playing behind required lesson points for the level
+      if ((phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank" || phase === "playing_platformer") && lessonPoints < requiredPoints) {
         console.log(`Need ${requiredPoints} lesson points to play! Current:`, lessonPoints);
         const question = getQuestionForLevel(currentLevel);
         set({ 
@@ -296,6 +358,17 @@ export const useTankGame = create<TankGameState>()(
     setPlayerName: (name) => {
       console.log("Setting player name:", name);
       set({ playerName: name });
+    },
+
+    selectGameMode: (mode) => {
+      set({ selectedGameMode: mode });
+      if (mode === "tank") {
+        set({ phase: "tank_selection" });
+      } else {
+        // Platformer mode - initialize level and go straight to playing
+        get().initializePlatformerLevel();
+        set({ phase: "playing_platformer" });
+      }
     },
 
     selectTank: (tank) => {
@@ -336,11 +409,21 @@ export const useTankGame = create<TankGameState>()(
         set({
           currentLevel: newLevel,
           phase: "quiz",
+          selectedGameMode: null, // Reset game mode for new level
           playerHealth: 100,
           playerX: -8,
           playerY: 0,
           enemies: [],
           bullets: [],
+          // Reset platformer state
+          platformerPlayerX: 0,
+          platformerPlayerY: 0,
+          platformerPlayerVX: 0,
+          platformerPlayerVY: 0,
+          platformerIsGrounded: false,
+          platformerEnemies: [],
+          platformerGems: [],
+          platformerReachedFlag: false,
           currentQuestion: getQuestionForLevel(newLevel),
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
@@ -356,6 +439,7 @@ export const useTankGame = create<TankGameState>()(
       set({
         phase: "name_entry",
         playerName: "", // Clear name on full reset
+        selectedGameMode: null,
         currentLevel: 1,
         score: 0,
         playerHealth: 100,
@@ -368,6 +452,15 @@ export const useTankGame = create<TankGameState>()(
         powerUps: [],
         activePowerUps: new Set(),
         powerUpEndTimes: new Map(),
+        // Reset platformer state
+        platformerPlayerX: 0,
+        platformerPlayerY: 0,
+        platformerPlayerVX: 0,
+        platformerPlayerVY: 0,
+        platformerIsGrounded: false,
+        platformerEnemies: [],
+        platformerGems: [],
+        platformerReachedFlag: false,
         enemiesDefeated: 0,
         powerUpsCollected: 0,
         currentQuestion: null,
@@ -485,6 +578,102 @@ export const useTankGame = create<TankGameState>()(
 
     fireMissile: () => {
       return true;
+    },
+
+    // Platformer methods
+    updatePlatformerPlayer: (x, y, vx, vy, grounded) => {
+      set({ 
+        platformerPlayerX: x, 
+        platformerPlayerY: y, 
+        platformerPlayerVX: vx, 
+        platformerPlayerVY: vy,
+        platformerIsGrounded: grounded
+      });
+    },
+
+    setPlatformerEnemies: (enemies) => {
+      set({ platformerEnemies: enemies });
+    },
+
+    updatePlatformerEnemy: (id, updates) => {
+      set((state) => ({
+        platformerEnemies: state.platformerEnemies.map(e =>
+          e.id === id ? { ...e, ...updates } : e
+        ),
+      }));
+    },
+
+    defeatPlatformerEnemy: (id) => {
+      set((state) => ({
+        platformerEnemies: state.platformerEnemies.map(e => 
+          e.id === id ? { ...e, isAlive: false } : e
+        ),
+        enemiesDefeated: state.enemiesDefeated + 1,
+      }));
+      get().addScore(50);
+    },
+
+    collectGem: (id) => {
+      set((state) => ({
+        platformerGems: state.platformerGems.map(g => 
+          g.id === id ? { ...g, collected: true } : g
+        ),
+      }));
+      get().addScore(10);
+    },
+
+    reachFlag: () => {
+      set({ platformerReachedFlag: true });
+      setTimeout(() => {
+        set({ phase: "level_complete" });
+      }, 1000);
+    },
+
+    initializePlatformerLevel: () => {
+      const { currentLevel } = get();
+      
+      // Initialize player position
+      set({
+        platformerPlayerX: 2,
+        platformerPlayerY: 2,
+        platformerPlayerVX: 0,
+        platformerPlayerVY: 0,
+        platformerIsGrounded: false,
+        platformerReachedFlag: false,
+      });
+
+      // Generate gems (more gems at higher levels)
+      const numGems = 5 + currentLevel * 2;
+      const gems: Gem[] = [];
+      for (let i = 0; i < numGems; i++) {
+        gems.push({
+          id: `gem-${i}`,
+          x: 5 + i * 3,
+          y: 2 + Math.random() * 4,
+          collected: false,
+        });
+      }
+
+      // Generate enemies (more enemies at higher levels)
+      const numEnemies = 2 + currentLevel;
+      const enemies: PlatformerEnemy[] = [];
+      for (let i = 0; i < numEnemies; i++) {
+        const x = 10 + i * 8;
+        enemies.push({
+          id: `enemy-${i}`,
+          x: x,
+          y: 2,
+          vx: 0.5,
+          patrolLeft: x - 3,
+          patrolRight: x + 3,
+          isAlive: true,
+        });
+      }
+
+      set({
+        platformerGems: gems,
+        platformerEnemies: enemies,
+      });
     },
   }))
 );
