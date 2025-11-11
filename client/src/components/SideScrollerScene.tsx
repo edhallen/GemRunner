@@ -1,8 +1,9 @@
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useLoader } from "@react-three/fiber";
 import { useKeyboardControls } from "@react-three/drei";
 import { useTankGame } from "@/lib/stores/useTankGame";
 import { useEffect, useRef } from "react";
 import { Controls } from "@/App";
+import * as THREE from "three";
 
 const GRAVITY = -15;
 const JUMP_VELOCITY = 14;
@@ -32,8 +33,12 @@ export function SideScrollerScene() {
   } = useTankGame();
 
   const [, getKeys] = useKeyboardControls<Controls>();
-  const lastJumpRef = useRef(0);
-  const lastMissileRef = useRef(0);
+  const wasJumpPressed = useRef(false);
+  const wasMissilePressed = useRef(false);
+  
+  // Load textures
+  const characterTexture = useLoader(THREE.TextureLoader, "/character.jpg");
+  const gemTexture = useLoader(THREE.TextureLoader, "/gem.jpg");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -53,17 +58,19 @@ export function SideScrollerScene() {
       newVX = 0; // Stop when no key pressed
     }
 
-    // Jumping - only when grounded and not already jumping
-    if (keys.shoot && platformerIsGrounded && Date.now() - lastJumpRef.current > 500) {
+    // Jumping - only trigger on key press (not held)
+    if (keys.shoot && !wasJumpPressed.current && platformerIsGrounded) {
       newVY = JUMP_VELOCITY;
-      lastJumpRef.current = Date.now();
+      console.log("Jump triggered!");
     }
+    wasJumpPressed.current = keys.shoot;
 
-    // Fire missile with 'm' key
-    if (keys.missile && Date.now() - lastMissileRef.current > 300) {
+    // Fire missile with 'm' key - only trigger on key press (not held)
+    if (keys.missile && !wasMissilePressed.current) {
+      console.log("Missile fired at position:", newX, newY);
       firePlatformerMissile(newX, newY);
-      lastMissileRef.current = Date.now();
     }
+    wasMissilePressed.current = keys.missile;
 
     // Apply gravity
     if (!platformerIsGrounded) {
@@ -192,19 +199,17 @@ export function SideScrollerScene() {
       ))}
 
       {/* Player */}
-      <mesh position={[platformerPlayerX, platformerPlayerY, 0]}>
-        <boxGeometry args={[PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE]} />
-        <meshBasicMaterial color="#4169E1" />
-      </mesh>
+      <sprite position={[platformerPlayerX, platformerPlayerY, 0]} scale={[1.2, 1.2, 1]}>
+        <spriteMaterial map={characterTexture} />
+      </sprite>
 
       {/* Gems */}
       {platformerGems.map(gem => {
         if (gem.collected) return null;
         return (
-          <mesh key={gem.id} position={[gem.x, gem.y, 0]} rotation={[0, 0, Math.PI / 4]}>
-            <boxGeometry args={[0.4, 0.4, 0.4]} />
-            <meshBasicMaterial color="#FFD700" />
-          </mesh>
+          <sprite key={gem.id} position={[gem.x, gem.y, 0]} scale={[0.6, 0.6, 1]}>
+            <spriteMaterial map={gemTexture} />
+          </sprite>
         );
       })}
 
