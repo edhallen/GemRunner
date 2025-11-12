@@ -169,6 +169,9 @@ export function SideScrollerScene() {
       newVY += GRAVITY * delta;
     }
 
+    // Store previous position for collision detection
+    const prevY = newY;
+    
     // Update position
     newX += newVX * delta;
     newY += newVY * delta;
@@ -186,8 +189,8 @@ export function SideScrollerScene() {
       
       // Check if player is horizontally aligned with platform
       if (newX >= platformLeft && newX <= platformRight) {
-        // Check if player is falling onto platform from above
-        if (newVY <= 0 && newY >= platformTopY && newY - newVY * delta <= platformTopY) {
+        // Check if player crossed the platform surface while falling (prevY was above, newY is at or below)
+        if (newVY <= 0 && prevY >= platformTopY && newY <= platformTopY + PLAYER_SIZE / 2) {
           // Land on platform
           platformTop = Math.max(platformTop, platformTopY);
           grounded = true;
@@ -212,8 +215,6 @@ export function SideScrollerScene() {
       newX = 0;
       newVX = 0;
     }
-
-    updatePlatformerPlayer(newX, newY, newVX, newVY, grounded);
 
     // Update enemy positions (patrol)
     platformerEnemies.forEach(enemy => {
@@ -302,6 +303,9 @@ export function SideScrollerScene() {
       console.log("Player reached the flag!");
       reachFlag();
     }
+
+    // Update player state after all collision resolution
+    updatePlatformerPlayer(newX, newY, newVX, newVY, grounded);
 
     // Update missiles (shoot horizontally to the right)
     // Use functional update to get current missiles from store
