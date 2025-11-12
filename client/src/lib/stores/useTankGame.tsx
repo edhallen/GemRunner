@@ -111,6 +111,7 @@ interface TankGameState {
   
   // Shared state
   currentQuestion: Question | null;
+  currentQuizMode: "typing" | "multiple_choice" | null;
   questionsAnswered: number;
   correctAnswers: number;
   quizQuestionsAnswered: number;
@@ -263,11 +264,11 @@ export const getRequiredLessonPoints = (level: number): number => {
 };
 
 // Generate a random question for a given level
-const getQuestionForLevel = (level: number): Question | null => {
-  // Randomly choose quiz mode (50/50 chance)
-  const isTypingMode = Math.random() < 0.5;
+const getQuestionForLevel = (level: number, mode?: "typing" | "multiple_choice"): Question | null => {
+  // Use provided mode or randomly choose quiz mode (50/50 chance)
+  const quizMode = mode || (Math.random() < 0.5 ? "typing" : "multiple_choice");
   
-  if (isTypingMode) {
+  if (quizMode === "typing") {
     // Generate typing question from simple word list
     const correctWord = TYPING_WORDS[Math.floor(Math.random() * TYPING_WORDS.length)];
     
@@ -365,6 +366,7 @@ export const useTankGame = create<TankGameState>()(
     
     // Shared state
     currentQuestion: null,
+    currentQuizMode: null,
     questionsAnswered: 0,
     correctAnswers: 0,
     quizQuestionsAnswered: 0,
@@ -376,15 +378,26 @@ export const useTankGame = create<TankGameState>()(
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
-      const { lessonPoints, typingQuizCorrect, currentLevel, currentQuestion } = get();
+      const { lessonPoints, typingQuizCorrect, currentLevel, currentQuizMode } = get();
       const requiredPoints = getRequiredLessonPoints(currentLevel);
+      
+      // Clear quiz session state when transitioning to phases that represent session breaks
+      if (phase === "menu" || phase === "level_complete" || phase === "game_over") {
+        console.log("Ending quiz session, clearing quiz mode and progress");
+        set({ 
+          phase,
+          currentQuizMode: null,
+          typingQuizCorrect: 0,
+        });
+        return;
+      }
       
       // Gate game mode selection and playing behind quiz completion requirements
       if (phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank" || phase === "playing_platformer") {
         let canAdvance = false;
         
-        // Check requirements based on current/last quiz mode
-        if (currentQuestion && currentQuestion.mode === "typing") {
+        // Check requirements based on current quiz mode
+        if (currentQuizMode === "typing") {
           canAdvance = typingQuizCorrect >= 3;
           if (!canAdvance) {
             console.log(`Need 3 typing quiz correct! Current:`, typingQuizCorrect);
@@ -397,28 +410,49 @@ export const useTankGame = create<TankGameState>()(
         }
         
         if (!canAdvance) {
-          const question = getQuestionForLevel(currentLevel);
+          // Continue with same quiz mode
+          const question = getQuestionForLevel(currentLevel, currentQuizMode || undefined);
           set({ 
             phase: "quiz", 
             currentQuestion: question,
             quizQuestionsAnswered: 0,
             quizCorrectAnswers: 0,
-            // Don't reset typing counter when re-entering quiz due to unmet requirements
+            // Don't reset typing counter or quiz mode when re-entering quiz due to unmet requirements
           });
           return;
         }
       }
       
       if (phase === "quiz") {
-        const question = getQuestionForLevel(get().currentLevel);
-        set({ 
-          phase, 
-          currentQuestion: question,
-          quizQuestionsAnswered: 0,
-          quizCorrectAnswers: 0,
-          // Only reset typing counter when explicitly entering quiz phase (not when re-entering)
-          typingQuizCorrect: 0,
-        });
+        const { currentQuizMode: existingMode } = get();
+        
+        // Only select new quiz mode if we don't have one (starting fresh session)
+        // If we already have a mode, keep it (mid-session retry)
+        const quizMode = existingMode || (Math.random() < 0.5 ? "typing" : "multiple_choice");
+        const isNewSession = !existingMode;
+        
+        const question = getQuestionForLevel(get().currentLevel, quizMode);
+        
+        if (isNewSession) {
+          console.log("Starting new quiz session with mode:", quizMode);
+          set({ 
+            phase, 
+            currentQuestion: question,
+            currentQuizMode: quizMode,
+            quizQuestionsAnswered: 0,
+            quizCorrectAnswers: 0,
+            typingQuizCorrect: 0, // Reset counters for new session
+          });
+        } else {
+          console.log("Continuing quiz session with mode:", quizMode);
+          set({ 
+            phase, 
+            currentQuestion: question,
+            // Don't reset currentQuizMode or typingQuizCorrect for mid-session retry
+            quizQuestionsAnswered: 0,
+            quizCorrectAnswers: 0,
+          });
+        }
       } else {
         set({ phase });
       }
@@ -495,10 +529,15 @@ export const useTankGame = create<TankGameState>()(
       if (newLevel > 5) {
         set({ currentLevel: newLevel, phase: "game_over" });
       } else {
+        // Select new quiz mode randomly for new level (50/50 chance)
+        const newQuizMode = Math.random() < 0.5 ? "typing" : "multiple_choice";
+        console.log("Starting level", newLevel, "with quiz mode:", newQuizMode);
+        
         set({
           currentLevel: newLevel,
           phase: "quiz",
           selectedGameMode: null, // Reset game mode for new level
+          currentQuizMode: newQuizMode, // Set new quiz mode for this level
           playerHealth: 100,
           playerX: -8,
           playerY: 0,
@@ -514,7 +553,7 @@ export const useTankGame = create<TankGameState>()(
           platformerGems: [],
           platformerMissiles: [],
           platformerReachedFlag: false,
-          currentQuestion: getQuestionForLevel(newLevel),
+          currentQuestion: getQuestionForLevel(newLevel, newQuizMode),
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
           typingQuizCorrect: 0, // Reset typing progress for new level
@@ -556,6 +595,7 @@ export const useTankGame = create<TankGameState>()(
         enemiesDefeated: 0,
         powerUpsCollected: 0,
         currentQuestion: null,
+        currentQuizMode: null, // Reset quiz mode
         questionsAnswered: 0,
         correctAnswers: 0,
         quizQuestionsAnswered: 0,
