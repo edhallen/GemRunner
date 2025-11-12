@@ -66,6 +66,7 @@ export interface PlatformerEnemy {
   patrolLeft: number;
   patrolRight: number;
   isAlive: boolean;
+  type: 'enemy1' | 'enemy2' | 'enemy3';
 }
 
 export interface Gem {
@@ -790,14 +791,17 @@ export const useTankGame = create<TankGameState>()(
       }
 
       // Generate enemies (more enemies at higher levels)
-      const numEnemies = 2 + currentLevel;
+      const numEnemies = 4 + currentLevel * 2; // Increased from 2 + currentLevel
       const enemies: PlatformerEnemy[] = [];
+      const enemyTypes: Array<'enemy1' | 'enemy2' | 'enemy3'> = ['enemy1', 'enemy2', 'enemy3'];
+      
       for (let i = 0; i < numEnemies; i++) {
         // Spread enemies across the level at varied X positions
-        // This naturally creates altitude variation when combined with hills
-        const xPositions = [12, 18, 24, 32, 38];
+        const xPositions = [12, 18, 24, 30, 32, 36, 38, 42];
         const x = xPositions[i % xPositions.length];
         const y = 0.5; // Will be adjusted to terrain height in game loop
+        const type = enemyTypes[i % enemyTypes.length]; // Cycle through enemy types
+        
         enemies.push({
           id: `enemy-${i}`,
           x: x,
@@ -806,6 +810,7 @@ export const useTankGame = create<TankGameState>()(
           patrolLeft: x - 3,
           patrolRight: x + 3,
           isAlive: true,
+          type: type,
         });
       }
 

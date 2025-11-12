@@ -120,7 +120,9 @@ export function SideScrollerScene() {
   // Load textures
   const characterTexture = useLoader(THREE.TextureLoader, "/character.png");
   const gemTexture = useLoader(THREE.TextureLoader, "/gem.png");
-  const enemyTexture = useLoader(THREE.TextureLoader, "/enemy.png");
+  const enemy1Texture = useLoader(THREE.TextureLoader, "/enemy.png");
+  const enemy2Texture = useLoader(THREE.TextureLoader, "/enemy2.png");
+  const enemy3Texture = useLoader(THREE.TextureLoader, "/enemy3.png");
   const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
 
   useFrame((_, delta) => {
@@ -372,9 +374,20 @@ export function SideScrollerScene() {
       {/* Enemies */}
       {platformerEnemies.map(enemy => {
         if (!enemy.isAlive) return null;
+        
+        // Select texture based on enemy type
+        let texture;
+        if (enemy.type === 'enemy1') {
+          texture = enemy1Texture;
+        } else if (enemy.type === 'enemy2') {
+          texture = enemy2Texture;
+        } else {
+          texture = enemy3Texture;
+        }
+        
         return (
           <sprite key={enemy.id} position={[enemy.x, enemy.y, 0]} scale={[0.8, 0.8, 1]}>
-            <spriteMaterial map={enemyTexture} transparent={true} />
+            <spriteMaterial map={texture} transparent={true} />
           </sprite>
         );
       })}
