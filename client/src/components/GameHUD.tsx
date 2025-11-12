@@ -2,8 +2,22 @@ import { useTankGame } from "@/lib/stores/useTankGame";
 import { Progress } from "@/components/ui/progress";
 
 export function GameHUD() {
-  const { score, playerHealth, maxHealth, currentLevel, playerName, missileCount } = useTankGame();
-  const healthPercent = (playerHealth / maxHealth) * 100;
+  const { 
+    score, 
+    playerHealth, 
+    maxHealth, 
+    platformerPlayerHealth, 
+    platformerMaxHealth, 
+    currentLevel, 
+    playerName, 
+    missileCount, 
+    selectedGameMode 
+  } = useTankGame();
+  
+  // Use platformer health if in platformer mode, otherwise use tank health
+  const currentHealth = selectedGameMode === "platformer" ? platformerPlayerHealth : playerHealth;
+  const currentMaxHealth = selectedGameMode === "platformer" ? platformerMaxHealth : maxHealth;
+  const healthPercent = (currentHealth / currentMaxHealth) * 100;
 
   return (
     <div className="fixed inset-0 pointer-events-none">
@@ -17,7 +31,7 @@ export function GameHUD() {
           LEVEL: {currentLevel}
         </div>
         <div className="text-white font-bold font-mono mb-2">
-          HP: {playerHealth}/{maxHealth}
+          HP: {currentHealth}/{currentMaxHealth}
         </div>
         <div className="w-48 h-4 bg-gray-700 rounded-full overflow-hidden border-2 border-gray-500 mb-3">
           <div 

@@ -90,6 +90,8 @@ interface TankGameState {
   platformerPlayerVX: number;
   platformerPlayerVY: number;
   platformerIsGrounded: boolean;
+  platformerPlayerHealth: number;
+  platformerMaxHealth: number;
   platformerEnemies: PlatformerEnemy[];
   platformerGems: Gem[];
   platformerMissiles: Bullet[];
@@ -137,6 +139,7 @@ interface TankGameState {
   initializePlatformerLevel: () => void;
   setPlatformerMissiles: (missiles: Bullet[]) => void;
   firePlatformerMissile: (x: number, y: number) => void;
+  takePlatformerDamage: (amount: number) => void;
 }
 
 // Comprehensive word bank with 200+ words organized by difficulty
@@ -313,6 +316,8 @@ export const useTankGame = create<TankGameState>()(
     platformerPlayerVX: 0,
     platformerPlayerVY: 0,
     platformerIsGrounded: false,
+    platformerPlayerHealth: 100,
+    platformerMaxHealth: 100,
     platformerEnemies: [],
     platformerGems: [],
     platformerMissiles: [],
@@ -645,6 +650,7 @@ export const useTankGame = create<TankGameState>()(
         platformerPlayerVX: 0,
         platformerPlayerVY: 0,
         platformerIsGrounded: false,
+        platformerPlayerHealth: 100,
         platformerMissiles: [],
         platformerReachedFlag: false,
       });
@@ -665,11 +671,15 @@ export const useTankGame = create<TankGameState>()(
       const numEnemies = 2 + currentLevel;
       const enemies: PlatformerEnemy[] = [];
       for (let i = 0; i < numEnemies; i++) {
-        const x = 10 + i * 8;
+        // Spread enemies across the level at varied X positions
+        // This naturally creates altitude variation when combined with hills
+        const xPositions = [12, 18, 24, 32, 38];
+        const x = xPositions[i % xPositions.length];
+        const y = 0.5; // Will be adjusted to terrain height in game loop
         enemies.push({
           id: `enemy-${i}`,
           x: x,
-          y: 2,
+          y: y,
           vx: 0.5,
           patrolLeft: x - 3,
           patrolRight: x + 3,
@@ -701,6 +711,17 @@ export const useTankGame = create<TankGameState>()(
       set((state) => ({
         platformerMissiles: [...state.platformerMissiles, newMissile],
       }));
+    },
+
+    takePlatformerDamage: (amount) => {
+      const { platformerPlayerHealth } = get();
+      const newHealth = Math.max(0, platformerPlayerHealth - amount);
+      
+      set({ platformerPlayerHealth: newHealth });
+      
+      if (newHealth <= 0) {
+        set({ phase: "game_over" });
+      }
     },
   }))
 );

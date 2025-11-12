@@ -12,6 +12,30 @@ const GROUND_Y = 0;
 const PLAYER_SIZE = 0.5;
 const MISSILE_SPEED = 12;
 
+// Hill terrain data - [startX, endX, height]
+const HILLS = [
+  { startX: 8, endX: 14, height: 1.5 },
+  { startX: 20, endX: 28, height: 2.5 },
+  { startX: 35, endX: 42, height: 1.8 },
+];
+
+// Function to get terrain height at a given X position
+const getTerrainHeight = (x: number): number => {
+  for (const hill of HILLS) {
+    if (x >= hill.startX && x <= hill.endX) {
+      // Simple linear interpolation for hill slopes
+      const hillCenter = (hill.startX + hill.endX) / 2;
+      const hillWidth = hill.endX - hill.startX;
+      const distFromCenter = Math.abs(x - hillCenter);
+      const normalizedDist = distFromCenter / (hillWidth / 2);
+      // Smooth hill curve using cosine
+      const heightMultiplier = Math.cos(normalizedDist * Math.PI / 2);
+      return GROUND_Y + hill.height * heightMultiplier;
+    }
+  }
+  return GROUND_Y;
+};
+
 export function SideScrollerScene() {
   const {
     platformerPlayerX,
@@ -30,15 +54,18 @@ export function SideScrollerScene() {
     reachFlag,
     firePlatformerMissile,
     setPlatformerMissiles,
+    takePlatformerDamage,
   } = useTankGame();
 
   const [, getKeys] = useKeyboardControls<Controls>();
   const wasJumpPressed = useRef(false);
   const wasMissilePressed = useRef(false);
+  const lastDamageTime = useRef(0);
   
   // Load textures
   const characterTexture = useLoader(THREE.TextureLoader, "/character.png");
   const gemTexture = useLoader(THREE.TextureLoader, "/gem.png");
+  const enemyTexture = useLoader(THREE.TextureLoader, "/enemy.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -81,10 +108,11 @@ export function SideScrollerScene() {
     newX += newVX * delta;
     newY += newVY * delta;
 
-    // Ground collision
+    // Terrain collision (including hills)
+    const terrainHeight = getTerrainHeight(newX);
     let grounded = false;
-    if (newY <= GROUND_Y + PLAYER_SIZE / 2) {
-      newY = GROUND_Y + PLAYER_SIZE / 2;
+    if (newY <= terrainHeight + PLAYER_SIZE / 2) {
+      newY = terrainHeight + PLAYER_SIZE / 2;
       newVY = 0;
       grounded = true;
     }
@@ -110,8 +138,12 @@ export function SideScrollerScene() {
         newEnemyX = Math.max(enemy.patrolLeft, Math.min(enemy.patrolRight, newEnemyX));
       }
 
+      // Enemies follow terrain (walk on hills)
+      const enemyTerrainHeight = getTerrainHeight(newEnemyX);
+      const newEnemyY = enemyTerrainHeight + 0.5;
+
       // Update enemy position in store
-      updatePlatformerEnemy(enemy.id, { x: newEnemyX, vx: newVx });
+      updatePlatformerEnemy(enemy.id, { x: newEnemyX, vx: newVx, y: newEnemyY });
 
       // Check collision with player
       const dx = newX - newEnemyX;
@@ -123,8 +155,15 @@ export function SideScrollerScene() {
         if (newY > enemy.y + 0.2 && newVY < 0) {
           // Defeat enemy!
           defeatPlatformerEnemy(enemy.id);
+        } else {
+          // Enemy deals damage (with cooldown to prevent rapid damage)
+          const now = Date.now();
+          if (now - lastDamageTime.current > 1000) {
+            takePlatformerDamage(10);
+            lastDamageTime.current = now;
+            console.log("Player took damage from enemy!");
+          }
         }
-        // If enemy hits player from side, could add damage here
       }
     });
 
@@ -190,6 +229,18 @@ export function SideScrollerScene() {
         <meshBasicMaterial color="#8B4513" />
       </mesh>
 
+      {/* Hills */}
+      {HILLS.map((hill, idx) => {
+        const centerX = (hill.startX + hill.endX) / 2;
+        const width = hill.endX - hill.startX;
+        return (
+          <mesh key={`hill-${idx}`} position={[centerX, GROUND_Y + hill.height / 2, -0.1]}>
+            <boxGeometry args={[width, hill.height, 1]} />
+            <meshBasicMaterial color="#6B8E23" />
+          </mesh>
+        );
+      })}
+
       {/* Platform decorations */}
       {[...Array(20)].map((_, i) => (
         <mesh key={`grass-${i}`} position={[i * 5, GROUND_Y, 0.1]}>
@@ -217,10 +268,9 @@ export function SideScrollerScene() {
       {platformerEnemies.map(enemy => {
         if (!enemy.isAlive) return null;
         return (
-          <mesh key={enemy.id} position={[enemy.x, enemy.y, 0]}>
-            <boxGeometry args={[0.6, 0.6, 0.6]} />
-            <meshBasicMaterial color="#FF0000" />
-          </mesh>
+          <sprite key={enemy.id} position={[enemy.x, enemy.y, 0]} scale={[0.8, 0.8, 1]}>
+            <spriteMaterial map={enemyTexture} transparent={true} />
+          </sprite>
         );
       })}
 
