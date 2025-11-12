@@ -37,8 +37,8 @@ export function SideScrollerScene() {
   const wasMissilePressed = useRef(false);
   
   // Load textures
-  const characterTexture = useLoader(THREE.TextureLoader, "/character.jpg");
-  const gemTexture = useLoader(THREE.TextureLoader, "/gem.jpg");
+  const characterTexture = useLoader(THREE.TextureLoader, "/character.png");
+  const gemTexture = useLoader(THREE.TextureLoader, "/gem.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -200,7 +200,7 @@ export function SideScrollerScene() {
 
       {/* Player */}
       <sprite position={[platformerPlayerX, platformerPlayerY, 0]} scale={[1.2, 1.2, 1]}>
-        <spriteMaterial map={characterTexture} />
+        <spriteMaterial map={characterTexture} transparent={true} />
       </sprite>
 
       {/* Gems */}
@@ -208,7 +208,7 @@ export function SideScrollerScene() {
         if (gem.collected) return null;
         return (
           <sprite key={gem.id} position={[gem.x, gem.y, 0]} scale={[0.6, 0.6, 1]}>
-            <spriteMaterial map={gemTexture} />
+            <spriteMaterial map={gemTexture} transparent={true} />
           </sprite>
         );
       })}
