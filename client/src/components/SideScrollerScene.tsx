@@ -61,6 +61,13 @@ export function SideScrollerScene() {
   const wasJumpPressed = useRef(false);
   const wasMissilePressed = useRef(false);
   const lastDamageTime = useRef(0);
+  const hitSound = useRef<HTMLAudioElement | null>(null);
+  
+  // Initialize sound effect
+  useEffect(() => {
+    hitSound.current = new Audio("/sounds/hit.mp3");
+    hitSound.current.volume = 0.3;
+  }, []);
   
   // Load textures
   const characterTexture = useLoader(THREE.TextureLoader, "/character.png");
@@ -162,6 +169,17 @@ export function SideScrollerScene() {
             takePlatformerDamage(10);
             lastDamageTime.current = now;
             console.log("Player took damage from enemy!");
+            
+            // Play hit sound effect
+            if (hitSound.current) {
+              hitSound.current.currentTime = 0;
+              hitSound.current.play().catch(err => console.log("Audio play failed:", err));
+            }
+            
+            // Bounce player back based on enemy position
+            const bounceDirection = newX > newEnemyX ? 1 : -1;
+            newVX = bounceDirection * 8; // Push player back
+            newVY = 6; // Give slight upward velocity for bounce effect
           }
         }
       }
@@ -180,8 +198,9 @@ export function SideScrollerScene() {
       }
     });
 
-    // Check if reached flag (at x = 50 for now)
-    if (newX > 45 && !platformerReachedFlag) {
+    // Check if reached flag (flag is at x = 48)
+    if (newX >= 47.5 && !platformerReachedFlag) {
+      console.log("Player reached the flag!");
       reachFlag();
     }
 
@@ -262,8 +281,8 @@ export function SideScrollerScene() {
         </mesh>
       ))}
 
-      {/* Player */}
-      <sprite position={[platformerPlayerX, platformerPlayerY, 0]} scale={[1.2, 1.2, 1]}>
+      {/* Player - raised by 0.3 units so feet aren't covered */}
+      <sprite position={[platformerPlayerX, platformerPlayerY + 0.3, 0]} scale={[1.2, 1.2, 1]}>
         <spriteMaterial map={characterTexture} transparent={true} />
       </sprite>
 

@@ -822,13 +822,15 @@ export const useTankGame = create<TankGameState>()(
     firePlatformerMissile: (x, y) => {
       const newMissile: Bullet = {
         id: `missile-${Date.now()}-${Math.random()}`,
-        x: x,
+        x: x + 0.5, // Spawn slightly ahead of player
         y: y,
-        vx: 0,
-        vy: 1, // Upward velocity (will be multiplied by speed in scene)
+        vx: 1, // Horizontal velocity (will be multiplied by speed in scene)
+        vy: 0,
         owner: "player",
         isMissile: true,
       };
+      
+      console.log("Missile created:", newMissile);
 
       set((state) => ({
         platformerMissiles: [...state.platformerMissiles, newMissile],
