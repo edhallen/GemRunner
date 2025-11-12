@@ -76,6 +76,14 @@ export interface Gem {
   collected: boolean;
 }
 
+export interface Platform {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface TankGameState {
   phase: GamePhase;
   playerName: string;
@@ -107,6 +115,7 @@ interface TankGameState {
   platformerMaxHealth: number;
   platformerEnemies: PlatformerEnemy[];
   platformerGems: Gem[];
+  platformerPlatforms: Platform[];
   platformerMissiles: Bullet[];
   platformerReachedFlag: boolean;
   
@@ -362,6 +371,7 @@ export const useTankGame = create<TankGameState>()(
     platformerMaxHealth: 100,
     platformerEnemies: [],
     platformerGems: [],
+    platformerPlatforms: [],
     platformerMissiles: [],
     platformerReachedFlag: false,
     
@@ -552,6 +562,7 @@ export const useTankGame = create<TankGameState>()(
           platformerIsGrounded: false,
           platformerEnemies: [],
           platformerGems: [],
+          platformerPlatforms: [],
           platformerMissiles: [],
           platformerReachedFlag: false,
           currentQuestion: getQuestionForLevel(newLevel, newQuizMode),
@@ -591,6 +602,7 @@ export const useTankGame = create<TankGameState>()(
         platformerIsGrounded: false,
         platformerEnemies: [],
         platformerGems: [],
+        platformerPlatforms: [],
         platformerMissiles: [],
         platformerReachedFlag: false,
         enemiesDefeated: 0,
@@ -814,9 +826,21 @@ export const useTankGame = create<TankGameState>()(
         });
       }
 
+      // Generate platforms (floating platforms in the sky)
+      const platforms: Platform[] = [
+        // Level 1 platforms - lower difficulty
+        { id: 'plat-1', x: 10, y: -1, width: 4, height: 0.5 },
+        { id: 'plat-2', x: 16, y: 1, width: 3, height: 0.5 },
+        { id: 'plat-3', x: 22, y: -0.5, width: 4, height: 0.5 },
+        { id: 'plat-4', x: 28, y: 2, width: 3, height: 0.5 },
+        { id: 'plat-5', x: 34, y: 0.5, width: 4, height: 0.5 },
+        { id: 'plat-6', x: 40, y: 1.5, width: 3, height: 0.5 },
+      ];
+
       set({
         platformerGems: gems,
         platformerEnemies: enemies,
+        platformerPlatforms: platforms,
       });
     },
 
