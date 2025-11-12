@@ -161,7 +161,8 @@ export function QuizScreen() {
                 onChange={(e) => setTypedAnswer(e.target.value)}
                 placeholder="Type the word here..."
                 disabled={showFeedback}
-                className="text-5xl font-bold font-mono h-24 text-center border-4 border-blue-500 focus:border-purple-500 placeholder:text-5xl"
+                className="!text-5xl font-bold font-mono h-24 text-center border-4 border-blue-500 focus:border-purple-500 placeholder:text-5xl"
+                style={{ fontSize: '3rem' }}
                 autoFocus
               />
             </div>
