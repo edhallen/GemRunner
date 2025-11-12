@@ -87,6 +87,7 @@ export function SideScrollerScene() {
   const platformerIsGrounded = useTankGame(state => state.platformerIsGrounded);
   const platformerEnemies = useTankGame(state => state.platformerEnemies);
   const platformerGems = useTankGame(state => state.platformerGems);
+  const platformerPlatforms = useTankGame(state => state.platformerPlatforms);
   const platformerMissiles = useTankGame(state => state.platformerMissiles);
   const platformerReachedFlag = useTankGame(state => state.platformerReachedFlag);
   const updatePlatformerPlayer = useTankGame(state => state.updatePlatformerPlayer);
@@ -172,11 +173,36 @@ export function SideScrollerScene() {
     newX += newVX * delta;
     newY += newVY * delta;
 
+    // Platform collision detection
+    let grounded = false;
+    let platformTop = -Infinity;
+    
+    // Check collision with platforms
+    for (const platform of platformerPlatforms) {
+      const platformLeft = platform.x - platform.width / 2;
+      const platformRight = platform.x + platform.width / 2;
+      const platformTopY = platform.y + platform.height / 2;
+      const platformBottomY = platform.y - platform.height / 2;
+      
+      // Check if player is horizontally aligned with platform
+      if (newX >= platformLeft && newX <= platformRight) {
+        // Check if player is falling onto platform from above
+        if (newVY <= 0 && newY >= platformTopY && newY - newVY * delta <= platformTopY) {
+          // Land on platform
+          platformTop = Math.max(platformTop, platformTopY);
+          grounded = true;
+        }
+      }
+    }
+    
     // Terrain collision (including hills)
     const terrainHeight = getTerrainHeight(newX);
-    let grounded = false;
-    if (newY <= terrainHeight + PLAYER_SIZE / 2) {
-      newY = terrainHeight + PLAYER_SIZE / 2;
+    
+    // Use whichever surface is higher (platform or terrain)
+    const finalSurfaceHeight = Math.max(terrainHeight, platformTop);
+    
+    if (newY <= finalSurfaceHeight + PLAYER_SIZE / 2) {
+      newY = finalSurfaceHeight + PLAYER_SIZE / 2;
       newVY = 0;
       grounded = true;
     }
