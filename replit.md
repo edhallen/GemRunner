@@ -6,6 +6,24 @@ Tank Reader is an educational game that combines reading comprehension challenge
 
 ## Recent Changes (November 12, 2025)
 
+- **Dual Quiz Mode System**: Added typing quiz mode alongside multiple choice
+  - Random 50/50 selection between quiz modes for each session
+  - **Multiple Choice**: Click to hear word, select from 3-9 randomized options
+    - Existing behavior: +1 point correct, -1 point incorrect
+    - Requires level-based lesson points (5→6→7→8→9) to advance
+  - **Typing Mode**: Click to hear word, type the word you heard
+    - 30 common English words: this, them, that, the, is, it, who, what, am, and, he, she, of, was, have, said, can, in, his, her, your, game, from, are, name, lego, go, to, star, wars
+    - No penalty for incorrect answers (encourages experimentation)
+    - Requires 3 correct answers to unlock gameplay
+    - Case-insensitive, trimmed comparison for accurate validation
+  - Discriminated union Question type (MultipleChoiceQuestion | TypingQuestion)
+  - Progress indicators adapt to show current mode requirements
+  - Text-to-speech works for both modes
+- **Platformer Visual Improvements**: Fixed terrain and ground positioning
+  - Hills now visually match actual collision terrain using 12-segment cosine curves
+  - Ground lowered by 2 units for more sky visibility
+  - Character feet no longer hidden by ground surface
+  - Grass decorations positioned correctly on terrain
 - **Platformer Camera Zoom Enhancement**: Significantly zoomed-in view for better visibility
   - Camera zoom increased from 30 to 70 (2.3x closer)
   - Player character appears much larger on screen
@@ -16,7 +34,7 @@ Tank Reader is an educational game that combines reading comprehension challenge
   - Missiles now fire to the right (X-axis movement) instead of upward
   - Increased missile size from 0.2×0.5 to 0.5×0.2 for better visibility at zoom level
   - Bright yellow color (#FFFF00) for high contrast against backgrounds
-  - Missiles removed when 20 units ahead of player instead of vertical boundary
+  - Missiles removed when past level boundary (X > 60) instead of player-relative
   - Proper collision detection with enemies
 
 ## Previous Changes (November 3, 2025)

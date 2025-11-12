@@ -403,6 +403,7 @@ export const useTankGame = create<TankGameState>()(
             currentQuestion: question,
             quizQuestionsAnswered: 0,
             quizCorrectAnswers: 0,
+            // Don't reset typing counter when re-entering quiz due to unmet requirements
           });
           return;
         }
@@ -415,7 +416,7 @@ export const useTankGame = create<TankGameState>()(
           currentQuestion: question,
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
-          // Reset typing counter when starting new quiz
+          // Only reset typing counter when explicitly entering quiz phase (not when re-entering)
           typingQuizCorrect: 0,
         });
       } else {
@@ -516,6 +517,7 @@ export const useTankGame = create<TankGameState>()(
           currentQuestion: getQuestionForLevel(newLevel),
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
+          typingQuizCorrect: 0, // Reset typing progress for new level
           lessonPoints: 0, // Reset lesson points for new level
           missileCount: 3, // Reset missiles for new level
         });
