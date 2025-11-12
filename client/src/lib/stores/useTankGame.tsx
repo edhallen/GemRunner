@@ -784,7 +784,7 @@ export const useTankGame = create<TankGameState>()(
         gems.push({
           id: `gem-${i}`,
           x: 5 + i * 3,
-          y: 2 + Math.random() * 4,
+          y: -3 + Math.random() * 6, // Range from -3 to 3, covering low to high
           collected: false,
         });
       }
