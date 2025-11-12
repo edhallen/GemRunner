@@ -392,11 +392,12 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
-      {/* Missiles - bright red sprites */}
+      {/* Missiles - bright red boxes visible in orthographic view */}
       {platformerMissiles.map(missile => (
-        <sprite key={missile.id} position={[missile.x, missile.y, 0.5]} scale={[0.6, 0.3, 1]}>
-          <spriteMaterial color="#FF0000" />
-        </sprite>
+        <mesh key={missile.id} position={[missile.x, missile.y, 0]}>
+          <boxGeometry args={[0.6, 0.3, 0.3]} />
+          <meshBasicMaterial color="#FF0000" />
+        </mesh>
       ))}
       
       {/* Explosions */}
