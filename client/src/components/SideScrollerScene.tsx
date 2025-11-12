@@ -237,15 +237,31 @@ export function SideScrollerScene() {
 
       // Check collision with player
       const dx = newX - newEnemyX;
-      const dy = newY - enemy.y;
+      const dy = newY - newEnemyY;
       const distance = Math.sqrt(dx * dx + dy * dy);
+      const minDistance = 0.8; // Minimum allowed distance between sprites
 
-      if (distance < 0.8 && enemy.isAlive) {
+      if (distance < minDistance && enemy.isAlive) {
         // Check if player is jumping on enemy (player above enemy and moving down)
-        if (newY > enemy.y + 0.2 && newVY < 0) {
+        if (newY > newEnemyY + 0.2 && newVY < 0) {
           // Defeat enemy!
           defeatPlatformerEnemy(enemy.id);
         } else {
+          // Calculate overlap and push sprites apart
+          const overlap = minDistance - distance;
+          const pushX = (dx / distance) * overlap * 0.5;
+          const pushY = (dy / distance) * overlap * 0.5;
+          
+          // Push player away from enemy (prevent overlap)
+          newX += pushX;
+          newY += pushY;
+          
+          // Push enemy away from player (prevent overlap)
+          updatePlatformerEnemy(enemy.id, { 
+            x: newEnemyX - pushX,
+            y: newEnemyY - pushY 
+          });
+          
           // Enemy deals damage (with cooldown to prevent rapid damage)
           const now = Date.now();
           if (now - lastDamageTime.current > 1000) {
@@ -259,7 +275,7 @@ export function SideScrollerScene() {
               hitSound.current.play().catch(err => console.log("Audio play failed:", err));
             }
             
-            // Bounce player back based on enemy position
+            // Apply bounce velocity to player
             const bounceDirection = newX > newEnemyX ? 1 : -1;
             newVX = bounceDirection * 8; // Push player back
             newVY = 6; // Give slight upward velocity for bounce effect
@@ -438,22 +454,13 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
-      {/* Test missile - always visible */}
-      <mesh position={[10, -2, 0.3]}>
-        <planeGeometry args={[1, 0.5]} />
-        <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
-      </mesh>
-      
-      {/* Missiles - bright red rectangles using planes like the flag */}
-      {(() => {
-        console.log("Rendering missiles, count:", platformerMissiles.length, platformerMissiles);
-        return platformerMissiles.map(missile => (
-          <mesh key={missile.id} position={[missile.x, missile.y, 0.3]} rotation={[0, 0, 0]}>
-            <planeGeometry args={[0.5, 0.25]} />
-            <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
-          </mesh>
-        ));
-      })()}
+      {/* Missiles - bright red rectangles */}
+      {platformerMissiles.map(missile => (
+        <mesh key={missile.id} position={[missile.x, missile.y, 0.3]} rotation={[0, 0, 0]}>
+          <planeGeometry args={[0.5, 0.25]} />
+          <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
+        </mesh>
+      ))}
       
       {/* Explosions */}
       {explosions.map(explosion => (
