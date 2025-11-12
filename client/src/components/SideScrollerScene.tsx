@@ -392,16 +392,14 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
-      {/* Missiles - bright red boxes, larger and very visible */}
+      {/* Missiles - using sprites like other game objects */}
+      {console.log("Total missiles in array:", platformerMissiles.length)}
       {platformerMissiles.map(missile => {
-        if (platformerMissiles.length > 0) {
-          console.log(`Rendering missile at x:${missile.x}, y:${missile.y}`);
-        }
+        console.log(`Rendering missile ${missile.id} at x:${missile.x}, y:${missile.y}, z:0.5`);
         return (
-          <mesh key={missile.id} position={[missile.x, missile.y, 0.5]}>
-            <boxGeometry args={[0.8, 0.4, 0.4]} />
-            <meshBasicMaterial color="#FF0000" />
-          </mesh>
+          <sprite key={missile.id} position={[missile.x, missile.y, 0.5]} scale={[0.6, 0.3, 1]}>
+            <spriteMaterial color="#FF0000" />
+          </sprite>
         );
       })}
       
