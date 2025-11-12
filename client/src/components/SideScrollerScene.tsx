@@ -260,43 +260,44 @@ export function SideScrollerScene() {
     }
 
     // Update missiles (shoot horizontally to the right)
-    const updatedMissiles = platformerMissiles
-      .map(missile => ({
-        ...missile,
-        x: missile.x + MISSILE_SPEED * delta,
-      }))
-      .filter(missile => {
-        // Remove missiles that are off-screen (past the level end)
-        if (missile.x > 60) return false;
+    // Use functional update to get current missiles from store
+    setPlatformerMissiles(
+      useTankGame.getState().platformerMissiles
+        .map(missile => ({
+          ...missile,
+          x: missile.x + MISSILE_SPEED * delta,
+        }))
+        .filter(missile => {
+          // Remove missiles that are off-screen (past the level end)
+          if (missile.x > 60) return false;
 
-        // Check collision with enemies
-        for (const enemy of platformerEnemies) {
-          if (!enemy.isAlive) continue;
+          // Check collision with enemies
+          for (const enemy of platformerEnemies) {
+            if (!enemy.isAlive) continue;
 
-          const dx = missile.x - enemy.x;
-          const dy = missile.y - enemy.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+            const dx = missile.x - enemy.x;
+            const dy = missile.y - enemy.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance < 0.8) {
-            console.log("Missile hit enemy! Creating explosion at:", enemy.x, enemy.y);
-            
-            // Create explosion effect
-            setExplosions((prev: Explosion[]) => [...prev, {
-              id: `explosion-${Date.now()}-${Math.random()}`,
-              x: enemy.x,
-              y: enemy.y,
-              time: Date.now()
-            }]);
-            
-            defeatPlatformerEnemy(enemy.id);
-            return false; // Remove missile after hit
+            if (distance < 0.8) {
+              console.log("Missile hit enemy! Creating explosion at:", enemy.x, enemy.y);
+              
+              // Create explosion effect
+              setExplosions((prev: Explosion[]) => [...prev, {
+                id: `explosion-${Date.now()}-${Math.random()}`,
+                x: enemy.x,
+                y: enemy.y,
+                time: Date.now()
+              }]);
+              
+              defeatPlatformerEnemy(enemy.id);
+              return false; // Remove missile after hit
+            }
           }
-        }
 
-        return true; // Keep missile
-      });
-
-    setPlatformerMissiles(updatedMissiles);
+          return true; // Keep missile
+        })
+    );
     
     // Clean up old explosions (after 0.5 seconds) - use functional update
     setExplosions((prev: Explosion[]) => {
