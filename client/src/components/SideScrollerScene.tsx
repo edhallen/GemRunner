@@ -1,7 +1,7 @@
 import { useFrame, useLoader } from "@react-three/fiber";
 import { useKeyboardControls } from "@react-three/drei";
 import { useTankGame } from "@/lib/stores/useTankGame";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controls } from "@/App";
 import * as THREE from "three";
 
@@ -36,6 +36,49 @@ const getTerrainHeight = (x: number): number => {
   return GROUND_Y;
 };
 
+// Explosion component with animated scaling/fading using useFrame
+function Explosion({ x, y, startTime }: { x: number; y: number; startTime: number }) {
+  const group1Ref = useRef<THREE.Mesh>(null);
+  const group2Ref = useRef<THREE.Mesh>(null);
+  const group3Ref = useRef<THREE.Mesh>(null);
+  
+  useFrame(() => {
+    const age = Date.now() - startTime;
+    const scale = 1 + (age / 500) * 2;
+    const opacity = 1 - (age / 500);
+    
+    if (group1Ref.current) {
+      group1Ref.current.scale.set(scale * 0.5, scale * 0.5, 1);
+      (group1Ref.current.material as THREE.MeshBasicMaterial).opacity = opacity;
+    }
+    if (group2Ref.current) {
+      group2Ref.current.scale.set(scale * 0.7, scale * 0.7, 1);
+      (group2Ref.current.material as THREE.MeshBasicMaterial).opacity = opacity * 0.7;
+    }
+    if (group3Ref.current) {
+      group3Ref.current.scale.set(scale, scale, 1);
+      (group3Ref.current.material as THREE.MeshBasicMaterial).opacity = opacity * 0.5;
+    }
+  });
+  
+  return (
+    <group position={[x, y, 0.8]}>
+      <mesh ref={group1Ref}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshBasicMaterial color="#FF4500" transparent />
+      </mesh>
+      <mesh ref={group2Ref}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshBasicMaterial color="#FFA500" transparent />
+      </mesh>
+      <mesh ref={group3Ref}>
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshBasicMaterial color="#FFFF00" transparent />
+      </mesh>
+    </group>
+  );
+}
+
 export function SideScrollerScene() {
   const {
     platformerPlayerX,
@@ -62,11 +105,18 @@ export function SideScrollerScene() {
   const wasMissilePressed = useRef(false);
   const lastDamageTime = useRef(0);
   const hitSound = useRef<HTMLAudioElement | null>(null);
+  const missileSound = useRef<HTMLAudioElement | null>(null);
   
-  // Initialize sound effect
+  type Explosion = { id: string; x: number; y: number; time: number };
+  const [explosions, setExplosions] = useState<Explosion[]>([]);
+  
+  // Initialize sound effects
   useEffect(() => {
     hitSound.current = new Audio("/sounds/hit.mp3");
     hitSound.current.volume = 0.3;
+    
+    missileSound.current = new Audio("/sounds/hit.mp3");
+    missileSound.current.volume = 0.5;
   }, []);
   
   // Load textures
@@ -104,6 +154,12 @@ export function SideScrollerScene() {
     if (keys.missile && !wasMissilePressed.current) {
       console.log("Missile fired at position:", newX, newY);
       firePlatformerMissile(newX, newY);
+      
+      // Play missile firing sound
+      if (missileSound.current) {
+        missileSound.current.currentTime = 0;
+        missileSound.current.play().catch(err => console.log("Missile sound failed:", err));
+      }
     }
     wasMissilePressed.current = keys.missile;
 
@@ -224,6 +280,16 @@ export function SideScrollerScene() {
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < 0.8) {
+            console.log("Missile hit enemy! Creating explosion at:", enemy.x, enemy.y);
+            
+            // Create explosion effect
+            setExplosions((prev: Explosion[]) => [...prev, {
+              id: `explosion-${Date.now()}-${Math.random()}`,
+              x: enemy.x,
+              y: enemy.y,
+              time: Date.now()
+            }]);
+            
             defeatPlatformerEnemy(enemy.id);
             return false; // Remove missile after hit
           }
@@ -233,6 +299,14 @@ export function SideScrollerScene() {
       });
 
     setPlatformerMissiles(updatedMissiles);
+    
+    // Clean up old explosions (after 0.5 seconds) - use functional update
+    setExplosions((prev: Explosion[]) => {
+      if (prev.length === 0) return prev;
+      const now = Date.now();
+      const filtered = prev.filter((explosion: Explosion) => now - explosion.time < 500);
+      return filtered.length === prev.length ? prev : filtered;
+    });
   });
 
   return (
@@ -318,12 +392,17 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
-      {/* Missiles */}
+      {/* Missiles - larger and more visible */}
       {platformerMissiles.map(missile => (
         <mesh key={missile.id} position={[missile.x, missile.y, 0.5]}>
-          <boxGeometry args={[0.5, 0.2, 0.2]} />
-          <meshBasicMaterial color="#FFFF00" />
+          <boxGeometry args={[0.8, 0.3, 0.3]} />
+          <meshBasicMaterial color="#FF6600" />
         </mesh>
+      ))}
+      
+      {/* Explosions */}
+      {explosions.map(explosion => (
+        <Explosion key={explosion.id} x={explosion.x} y={explosion.y} startTime={explosion.time} />
       ))}
 
       {/* Lighting */}
