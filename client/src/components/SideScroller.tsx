@@ -9,8 +9,8 @@ function CameraFollow() {
   const { camera } = useThree();
 
   useFrame(() => {
-    // Smooth camera follow with tighter tracking for zoomed view
-    const targetX = Math.max(0, platformerPlayerX - 3); // Keep player closer to center
+    // Smooth camera follow with forward look-ahead for Mario/Sonic-style visibility
+    const targetX = platformerPlayerX + 2; // Position player left-of-center for 6-8 units forward visibility
     camera.position.x += (targetX - camera.position.x) * 0.12;
   });
 
@@ -21,7 +21,7 @@ export function SideScroller() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <Canvas
-        camera={{ position: [0, 0, 20], zoom: 70, near: 0.1, far: 200 }}
+        camera={{ position: [0, 0, 20], zoom: 72, near: 0.1, far: 200 }}
         orthographic
       >
         <CameraFollow />

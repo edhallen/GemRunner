@@ -6,7 +6,7 @@ import { Controls } from "@/App";
 import * as THREE from "three";
 
 const GRAVITY = -15;
-const JUMP_VELOCITY = 14;
+const JUMP_VELOCITY = 12;
 const MOVE_SPEED = 4;
 const GROUND_Y = -5;
 const PLAYER_SIZE = 0.5;
@@ -127,6 +127,7 @@ export function SideScrollerScene() {
   const enemy2Texture = useLoader(THREE.TextureLoader, "/enemy2.png");
   const enemy3Texture = useLoader(THREE.TextureLoader, "/enemy3.png");
   const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
+  const poopTexture = useLoader(THREE.TextureLoader, "/poop.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -444,10 +445,9 @@ export function SideScrollerScene() {
 
       {/* Poop Blobs - obstacles on ground that player must jump over */}
       {platformerPoopBlobs.map(blob => (
-        <mesh key={blob.id} position={[blob.x, blob.y, -0.15]} scale={[blob.width, blob.height * 0.6, blob.width * 0.8]}>
-          <sphereGeometry args={[0.5, 16, 12]} />
-          <meshBasicMaterial color="#6B4423" />
-        </mesh>
+        <sprite key={blob.id} position={[blob.x, blob.y + blob.height / 2, -0.15]} scale={[blob.width, blob.height, 1]}>
+          <spriteMaterial map={poopTexture} transparent={true} />
+        </sprite>
       ))}
 
       {/* Trees - positioned behind character */}
