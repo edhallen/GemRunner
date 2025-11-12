@@ -375,6 +375,14 @@ export function SideScrollerScene() {
         );
       })}
 
+      {/* Platforms - floating in the sky */}
+      {platformerPlatforms.map(platform => (
+        <mesh key={platform.id} position={[platform.x, platform.y, -0.2]}>
+          <boxGeometry args={[platform.width, platform.height, 1]} />
+          <meshBasicMaterial color="#A0522D" />
+        </mesh>
+      ))}
+
       {/* Trees - positioned behind character */}
       {[...Array(10)].map((_, i) => (
         <sprite key={`tree-${i}`} position={[i * 5 + 2, GROUND_Y + 1.5, -0.5]} scale={[3, 3, 1]}>
