@@ -392,6 +392,12 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
+      {/* Test missile - always visible */}
+      <mesh position={[10, -2, 0.3]}>
+        <planeGeometry args={[1, 0.5]} />
+        <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
+      </mesh>
+      
       {/* Missiles - bright red rectangles using planes like the flag */}
       {platformerMissiles.map(missile => (
         <mesh key={missile.id} position={[missile.x, missile.y, 0.3]} rotation={[0, 0, 0]}>
