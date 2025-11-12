@@ -80,25 +80,23 @@ function Explosion({ x, y, startTime }: { x: number; y: number; startTime: numbe
 }
 
 export function SideScrollerScene() {
-  const {
-    platformerPlayerX,
-    platformerPlayerY,
-    platformerPlayerVX,
-    platformerPlayerVY,
-    platformerIsGrounded,
-    platformerEnemies,
-    platformerGems,
-    platformerMissiles,
-    platformerReachedFlag,
-    updatePlatformerPlayer,
-    updatePlatformerEnemy,
-    defeatPlatformerEnemy,
-    collectGem,
-    reachFlag,
-    firePlatformerMissile,
-    setPlatformerMissiles,
-    takePlatformerDamage,
-  } = useTankGame();
+  const platformerPlayerX = useTankGame(state => state.platformerPlayerX);
+  const platformerPlayerY = useTankGame(state => state.platformerPlayerY);
+  const platformerPlayerVX = useTankGame(state => state.platformerPlayerVX);
+  const platformerPlayerVY = useTankGame(state => state.platformerPlayerVY);
+  const platformerIsGrounded = useTankGame(state => state.platformerIsGrounded);
+  const platformerEnemies = useTankGame(state => state.platformerEnemies);
+  const platformerGems = useTankGame(state => state.platformerGems);
+  const platformerMissiles = useTankGame(state => state.platformerMissiles);
+  const platformerReachedFlag = useTankGame(state => state.platformerReachedFlag);
+  const updatePlatformerPlayer = useTankGame(state => state.updatePlatformerPlayer);
+  const updatePlatformerEnemy = useTankGame(state => state.updatePlatformerEnemy);
+  const defeatPlatformerEnemy = useTankGame(state => state.defeatPlatformerEnemy);
+  const collectGem = useTankGame(state => state.collectGem);
+  const reachFlag = useTankGame(state => state.reachFlag);
+  const firePlatformerMissile = useTankGame(state => state.firePlatformerMissile);
+  const setPlatformerMissiles = useTankGame(state => state.setPlatformerMissiles);
+  const takePlatformerDamage = useTankGame(state => state.takePlatformerDamage);
 
   const [, getKeys] = useKeyboardControls<Controls>();
   const wasJumpPressed = useRef(false);
@@ -399,12 +397,15 @@ export function SideScrollerScene() {
       </mesh>
       
       {/* Missiles - bright red rectangles using planes like the flag */}
-      {platformerMissiles.map(missile => (
-        <mesh key={missile.id} position={[missile.x, missile.y, 0.3]} rotation={[0, 0, 0]}>
-          <planeGeometry args={[0.5, 0.25]} />
-          <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
-        </mesh>
-      ))}
+      {(() => {
+        console.log("Rendering missiles, count:", platformerMissiles.length, platformerMissiles);
+        return platformerMissiles.map(missile => (
+          <mesh key={missile.id} position={[missile.x, missile.y, 0.3]} rotation={[0, 0, 0]}>
+            <planeGeometry args={[0.5, 0.25]} />
+            <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
+          </mesh>
+        ));
+      })()}
       
       {/* Explosions */}
       {explosions.map(explosion => (
