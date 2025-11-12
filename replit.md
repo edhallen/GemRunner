@@ -4,7 +4,22 @@
 
 Tank Reader is an educational game that combines reading comprehension challenges with tank battle gameplay. The application is designed for children ages 5-7 to learn letter recognition, letter sounds, letter combinations, CVC words, sight words, and blend sounds through an engaging arcade-style experience. Players answer reading questions, select tanks, and battle enemies across progressive levels, earning points, unlocking achievements, and advancing through increasingly difficult stages.
 
-## Recent Changes (November 3, 2025)
+## Recent Changes (November 12, 2025)
+
+- **Platformer Camera Zoom Enhancement**: Significantly zoomed-in view for better visibility
+  - Camera zoom increased from 30 to 70 (2.3x closer)
+  - Player character appears much larger on screen
+  - Only part of level visible at once for more intimate gameplay
+  - Adjusted camera follow dampening (0.12) and horizontal lead (3 units) for smoother tracking
+  - Far clipping reduced to 200 for better depth precision
+- **Horizontal Missile System**: Fixed platformer missile firing to shoot horizontally
+  - Missiles now fire to the right (X-axis movement) instead of upward
+  - Increased missile size from 0.2×0.5 to 0.5×0.2 for better visibility at zoom level
+  - Bright yellow color (#FFFF00) for high contrast against backgrounds
+  - Missiles removed when 20 units ahead of player instead of vertical boundary
+  - Proper collision detection with enemies
+
+## Previous Changes (November 3, 2025)
 
 - **Horizontal Tank Battle Orientation**: Complete redesign from vertical to horizontal gameplay
   - Player spawns on LEFT side (-8, 0), enemies spawn on RIGHT side (8+, random Y)

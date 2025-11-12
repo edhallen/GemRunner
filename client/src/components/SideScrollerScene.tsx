@@ -185,15 +185,15 @@ export function SideScrollerScene() {
       reachFlag();
     }
 
-    // Update missiles
+    // Update missiles (shoot horizontally to the right)
     const updatedMissiles = platformerMissiles
       .map(missile => ({
         ...missile,
-        y: missile.y + MISSILE_SPEED * delta,
+        x: missile.x + MISSILE_SPEED * delta,
       }))
       .filter(missile => {
-        // Remove missiles that are off-screen
-        if (missile.y > 15) return false;
+        // Remove missiles that are off-screen (past the level end)
+        if (missile.x > 60) return false;
 
         // Check collision with enemies
         for (const enemy of platformerEnemies) {
@@ -288,9 +288,9 @@ export function SideScrollerScene() {
 
       {/* Missiles */}
       {platformerMissiles.map(missile => (
-        <mesh key={missile.id} position={[missile.x, missile.y, 0]}>
-          <boxGeometry args={[0.2, 0.5, 0.2]} />
-          <meshBasicMaterial color="#FF6600" />
+        <mesh key={missile.id} position={[missile.x, missile.y, 0.5]}>
+          <boxGeometry args={[0.5, 0.2, 0.2]} />
+          <meshBasicMaterial color="#FFFF00" />
         </mesh>
       ))}
 
