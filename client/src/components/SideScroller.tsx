@@ -9,9 +9,9 @@ function CameraFollow() {
   const { camera } = useThree();
 
   useFrame(() => {
-    // Smooth camera follow
-    const targetX = Math.max(0, platformerPlayerX - 5); // Keep player slightly left of center
-    camera.position.x += (targetX - camera.position.x) * 0.1;
+    // Smooth camera follow with tighter tracking for zoomed view
+    const targetX = Math.max(0, platformerPlayerX - 3); // Keep player closer to center
+    camera.position.x += (targetX - camera.position.x) * 0.12;
   });
 
   return null;
@@ -21,7 +21,7 @@ export function SideScroller() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <Canvas
-        camera={{ position: [0, 0, 20], zoom: 30, near: 0.1, far: 1000 }}
+        camera={{ position: [0, 0, 20], zoom: 70, near: 0.1, far: 200 }}
         orthographic
       >
         <CameraFollow />
