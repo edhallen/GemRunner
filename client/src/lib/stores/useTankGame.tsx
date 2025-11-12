@@ -7,14 +7,26 @@ export type GameMode = "tank" | "platformer";
 
 export type TankType = "light" | "medium" | "heavy" | "speed";
 
-export interface Question {
+export type QuizMode = "multiple_choice" | "typing";
+
+export interface BaseQuestion {
   id: string;
   type: "word" | "letter_recognition" | "letter_sound" | "letter_combination" | "sight_word" | "cvc_word" | "blend_sound";
   question: string;
-  options: string[];
   correctAnswer: string;
   level: number;
 }
+
+export interface MultipleChoiceQuestion extends BaseQuestion {
+  mode: "multiple_choice";
+  options: string[];
+}
+
+export interface TypingQuestion extends BaseQuestion {
+  mode: "typing";
+}
+
+export type Question = MultipleChoiceQuestion | TypingQuestion;
 
 export interface Enemy {
   id: string;
@@ -103,6 +115,7 @@ interface TankGameState {
   correctAnswers: number;
   quizQuestionsAnswered: number;
   quizCorrectAnswers: number;
+  typingQuizCorrect: number;
   enemiesDefeated: number;
   powerUpsCollected: number;
   lessonPoints: number;
@@ -141,6 +154,14 @@ interface TankGameState {
   firePlatformerMissile: (x: number, y: number) => void;
   takePlatformerDamage: (amount: number) => void;
 }
+
+// Simple word list for typing quiz mode
+// Most common English words suitable for typing practice
+const TYPING_WORDS = [
+  "this", "them", "that", "the", "is", "it", "who", "what", "am", "and",
+  "he", "she", "of", "was", "have", "said", "can", "in", "his", "her",
+  "your", "game", "from", "are", "name", "lego", "go", "to", "star", "wars"
+];
 
 // Comprehensive word bank with 200+ words organized by difficulty
 // Includes high-frequency English words and Star Wars vocabulary
@@ -243,32 +264,51 @@ export const getRequiredLessonPoints = (level: number): number => {
 
 // Generate a random question for a given level
 const getQuestionForLevel = (level: number): Question | null => {
-  const levelKey = `level${level}` as keyof typeof WORD_BANK;
-  const words = WORD_BANK[levelKey];
+  // Randomly choose quiz mode (50/50 chance)
+  const isTypingMode = Math.random() < 0.5;
   
-  if (!words || words.length === 0) return null;
-  
-  // Pick a random word from the level
-  const correctWord = words[Math.floor(Math.random() * words.length)];
-  
-  // Random number of options between 3 and 9
-  const numOptions = Math.floor(Math.random() * 7) + 3; // 3-9 inclusive
-  const numDistractors = numOptions - 1; // Subtract 1 for the correct answer
-  
-  // Generate random number of distractor words
-  const distractors = generateDistractors(correctWord, numDistractors);
-  
-  // Combine correct answer with distractors and shuffle
-  const allOptions = shuffleArray([correctWord, ...distractors]);
-  
-  return {
-    id: `q-${Date.now()}-${Math.random()}`,
-    type: "word",
-    question: `Which word is ${correctWord}?`,
-    options: allOptions,
-    correctAnswer: correctWord,
-    level
-  };
+  if (isTypingMode) {
+    // Generate typing question from simple word list
+    const correctWord = TYPING_WORDS[Math.floor(Math.random() * TYPING_WORDS.length)];
+    
+    return {
+      id: `q-${Date.now()}-${Math.random()}`,
+      type: "word",
+      mode: "typing",
+      question: `Type the word you hear:`,
+      correctAnswer: correctWord,
+      level
+    };
+  } else {
+    // Generate multiple choice question from level word bank
+    const levelKey = `level${level}` as keyof typeof WORD_BANK;
+    const words = WORD_BANK[levelKey];
+    
+    if (!words || words.length === 0) return null;
+    
+    // Pick a random word from the level
+    const correctWord = words[Math.floor(Math.random() * words.length)];
+    
+    // Random number of options between 3 and 9
+    const numOptions = Math.floor(Math.random() * 7) + 3; // 3-9 inclusive
+    const numDistractors = numOptions - 1; // Subtract 1 for the correct answer
+    
+    // Generate random number of distractor words
+    const distractors = generateDistractors(correctWord, numDistractors);
+    
+    // Combine correct answer with distractors and shuffle
+    const allOptions = shuffleArray([correctWord, ...distractors]);
+    
+    return {
+      id: `q-${Date.now()}-${Math.random()}`,
+      type: "word",
+      mode: "multiple_choice",
+      question: `Which word is ${correctWord}?`,
+      options: allOptions,
+      correctAnswer: correctWord,
+      level
+    };
+  }
 };
 
 const loadHighScore = (): number => {
@@ -329,26 +369,43 @@ export const useTankGame = create<TankGameState>()(
     correctAnswers: 0,
     quizQuestionsAnswered: 0,
     quizCorrectAnswers: 0,
+    typingQuizCorrect: 0,
     enemiesDefeated: 0,
     powerUpsCollected: 0,
     lessonPoints: 0,
 
     setPhase: (phase) => {
       console.log("Setting phase to:", phase);
-      const { lessonPoints, currentLevel } = get();
+      const { lessonPoints, typingQuizCorrect, currentLevel, currentQuestion } = get();
       const requiredPoints = getRequiredLessonPoints(currentLevel);
       
-      // Gate game mode selection and playing behind required lesson points for the level
-      if ((phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank" || phase === "playing_platformer") && lessonPoints < requiredPoints) {
-        console.log(`Need ${requiredPoints} lesson points to play! Current:`, lessonPoints);
-        const question = getQuestionForLevel(currentLevel);
-        set({ 
-          phase: "quiz", 
-          currentQuestion: question,
-          quizQuestionsAnswered: 0,
-          quizCorrectAnswers: 0,
-        });
-        return;
+      // Gate game mode selection and playing behind quiz completion requirements
+      if (phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank" || phase === "playing_platformer") {
+        let canAdvance = false;
+        
+        // Check requirements based on current/last quiz mode
+        if (currentQuestion && currentQuestion.mode === "typing") {
+          canAdvance = typingQuizCorrect >= 3;
+          if (!canAdvance) {
+            console.log(`Need 3 typing quiz correct! Current:`, typingQuizCorrect);
+          }
+        } else {
+          canAdvance = lessonPoints >= requiredPoints;
+          if (!canAdvance) {
+            console.log(`Need ${requiredPoints} lesson points to play! Current:`, lessonPoints);
+          }
+        }
+        
+        if (!canAdvance) {
+          const question = getQuestionForLevel(currentLevel);
+          set({ 
+            phase: "quiz", 
+            currentQuestion: question,
+            quizQuestionsAnswered: 0,
+            quizCorrectAnswers: 0,
+          });
+          return;
+        }
       }
       
       if (phase === "quiz") {
@@ -358,6 +415,8 @@ export const useTankGame = create<TankGameState>()(
           currentQuestion: question,
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
+          // Reset typing counter when starting new quiz
+          typingQuizCorrect: 0,
         });
       } else {
         set({ phase });
@@ -386,24 +445,44 @@ export const useTankGame = create<TankGameState>()(
     },
 
     answerQuestion: (answer) => {
-      const { currentQuestion, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, lessonPoints } = get();
+      const { currentQuestion, correctAnswers, questionsAnswered, quizCorrectAnswers, quizQuestionsAnswered, lessonPoints, typingQuizCorrect } = get();
       if (!currentQuestion) return false;
       
-      const isCorrect = answer === currentQuestion.correctAnswer;
+      // Case-insensitive, trimmed comparison for answer
+      const normalizedAnswer = answer.trim().toLowerCase();
+      const normalizedCorrect = currentQuestion.correctAnswer.trim().toLowerCase();
+      const isCorrect = normalizedAnswer === normalizedCorrect;
       console.log("Answer:", answer, "Correct:", isCorrect);
       
-      // Award 1 point for correct answers, subtract 1 point for incorrect answers (can go negative)
-      const newLessonPoints = isCorrect ? lessonPoints + 1 : lessonPoints - 1;
+      // Different scoring based on quiz mode
+      if (currentQuestion.mode === "typing") {
+        // Typing mode: no penalty for wrong answers, just track correct count
+        const newTypingCorrect = isCorrect ? typingQuizCorrect + 1 : typingQuizCorrect;
+        
+        set({
+          questionsAnswered: questionsAnswered + 1,
+          correctAnswers: isCorrect ? correctAnswers + 1 : correctAnswers,
+          quizQuestionsAnswered: quizQuestionsAnswered + 1,
+          quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
+          typingQuizCorrect: newTypingCorrect,
+        });
+        
+        console.log("Typing quiz correct:", newTypingCorrect);
+      } else {
+        // Multiple choice mode: +1 for correct, -1 for incorrect
+        const newLessonPoints = isCorrect ? lessonPoints + 1 : lessonPoints - 1;
+        
+        set({
+          questionsAnswered: questionsAnswered + 1,
+          correctAnswers: isCorrect ? correctAnswers + 1 : correctAnswers,
+          quizQuestionsAnswered: quizQuestionsAnswered + 1,
+          quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
+          lessonPoints: newLessonPoints,
+        });
+        
+        console.log("Lesson points:", newLessonPoints);
+      }
       
-      set({
-        questionsAnswered: questionsAnswered + 1,
-        correctAnswers: isCorrect ? correctAnswers + 1 : correctAnswers,
-        quizQuestionsAnswered: quizQuestionsAnswered + 1,
-        quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
-        lessonPoints: newLessonPoints,
-      });
-      
-      console.log("Lesson points:", newLessonPoints);
       return isCorrect;
     },
 
@@ -479,6 +558,7 @@ export const useTankGame = create<TankGameState>()(
         correctAnswers: 0,
         quizQuestionsAnswered: 0,
         quizCorrectAnswers: 0,
+        typingQuizCorrect: 0,
         lessonPoints: 0,
         missileCount: 3,
       });

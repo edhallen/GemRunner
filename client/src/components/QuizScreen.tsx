@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useTankGame, getRequiredLessonPoints } from "@/lib/stores/useTankGame";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function QuizScreen() {
-  const { currentQuestion, answerQuestion, setPhase, lessonPoints, currentLevel, playerName } = useTankGame();
+  const { currentQuestion, answerQuestion, setPhase, lessonPoints, typingQuizCorrect, currentLevel, playerName } = useTankGame();
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [typedAnswer, setTypedAnswer] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -63,7 +65,9 @@ export function QuizScreen() {
 
   const speakWord = () => {
     if ('speechSynthesis' in window && synthRef.current && currentQuestion) {
-      const word = extractWordFromQuestion(currentQuestion.question);
+      const word = currentQuestion.mode === "typing" 
+        ? currentQuestion.correctAnswer 
+        : extractWordFromQuestion(currentQuestion.question);
       window.speechSynthesis.cancel(); // Stop any current speech
       synthRef.current.text = word.toLowerCase(); // Convert to lowercase so it's read as a word, not acronym
       window.speechSynthesis.speak(synthRef.current);
@@ -87,13 +91,21 @@ export function QuizScreen() {
     setTimeout(() => {
       setShowFeedback(false);
       setSelectedAnswer(null);
+      setTypedAnswer("");
       // Always try to advance to game mode selection - setPhase will gate if not enough points
       setPhase("game_mode_selection");
     }, 2000);
   };
+  
+  const handleTypingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (typedAnswer.trim()) {
+      handleAnswer(typedAnswer);
+    }
+  };
 
-  // Determine grid columns based on number of options
-  const numOptions = currentQuestion.options.length;
+  // Determine grid columns based on number of options (for multiple choice)
+  const numOptions = currentQuestion.mode === "multiple_choice" ? currentQuestion.options.length : 0;
   const gridCols = numOptions <= 4 ? 'grid-cols-2' : numOptions <= 6 ? 'grid-cols-3' : 'grid-cols-3';
 
   return (
@@ -119,26 +131,49 @@ export function QuizScreen() {
           </div>
         </div>
 
-        <div className={`grid ${gridCols} gap-4`}>
-          {currentQuestion.options.map((option, index) => (
+        {currentQuestion.mode === "multiple_choice" ? (
+          <div className={`grid ${gridCols} gap-4`}>
+            {currentQuestion.options.map((option, index) => (
+              <Button
+                key={index}
+                onClick={() => handleAnswer(option)}
+                disabled={showFeedback}
+                className={`
+                  h-24 text-2xl font-bold font-mono transition-all
+                  ${showFeedback && selectedAnswer === option
+                    ? isCorrect
+                      ? "bg-green-500 hover:bg-green-500 text-white scale-110"
+                      : "bg-red-500 hover:bg-red-500 text-white"
+                    : "bg-blue-500 hover:bg-blue-600 text-white hover:scale-105"
+                  }
+                `}
+              >
+                {option.toLowerCase()}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <form onSubmit={handleTypingSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="text"
+                value={typedAnswer}
+                onChange={(e) => setTypedAnswer(e.target.value)}
+                placeholder="Type the word here..."
+                disabled={showFeedback}
+                className="text-3xl font-bold font-mono h-20 text-center border-4 border-blue-500 focus:border-purple-500"
+                autoFocus
+              />
+            </div>
             <Button
-              key={index}
-              onClick={() => handleAnswer(option)}
-              disabled={showFeedback}
-              className={`
-                h-24 text-2xl font-bold font-mono transition-all
-                ${showFeedback && selectedAnswer === option
-                  ? isCorrect
-                    ? "bg-green-500 hover:bg-green-500 text-white scale-110"
-                    : "bg-red-500 hover:bg-red-500 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white hover:scale-105"
-                }
-              `}
+              type="submit"
+              disabled={showFeedback || !typedAnswer.trim()}
+              className="w-full h-16 text-2xl font-bold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
             >
-              {option.toLowerCase()}
+              Submit Answer
             </Button>
-          ))}
-        </div>
+          </form>
+        )}
 
         {showFeedback && (
           <div className={`mt-6 text-center text-3xl font-bold ${isCorrect ? "text-green-600" : "text-red-600"}`}>
@@ -148,19 +183,38 @@ export function QuizScreen() {
 
         <div className="mt-8 pt-6 border-t-4 border-yellow-400">
           <div className="text-center mb-3">
-            <p className="text-xl font-bold text-blue-900">
-              Lesson Progress: {lessonPoints} / {requiredPoints} points
-            </p>
-            <p className="text-sm text-gray-600 mt-1">
-              {requiredPoints - lessonPoints > 0 
-                ? `${requiredPoints - lessonPoints} more to unlock the game!` 
-                : "Ready to play! 🎮"}
-            </p>
+            {currentQuestion.mode === "typing" ? (
+              <>
+                <p className="text-xl font-bold text-blue-900">
+                  Typing Progress: {typingQuizCorrect} / 3 correct
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {3 - typingQuizCorrect > 0 
+                    ? `${3 - typingQuizCorrect} more to unlock the game!` 
+                    : "Ready to play! 🎮"}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl font-bold text-blue-900">
+                  Lesson Progress: {lessonPoints} / {requiredPoints} points
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  {requiredPoints - lessonPoints > 0 
+                    ? `${requiredPoints - lessonPoints} more to unlock the game!` 
+                    : "Ready to play! 🎮"}
+                </p>
+              </>
+            )}
           </div>
           <div className="w-full h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-gray-400">
             <div 
               className="h-full transition-all duration-500 bg-gradient-to-r from-green-400 to-green-600"
-              style={{ width: `${Math.min((lessonPoints / requiredPoints) * 100, 100)}%` }}
+              style={{ 
+                width: currentQuestion.mode === "typing"
+                  ? `${Math.min((typingQuizCorrect / 3) * 100, 100)}%`
+                  : `${Math.min((lessonPoints / requiredPoints) * 100, 100)}%`
+              }}
             />
           </div>
         </div>
