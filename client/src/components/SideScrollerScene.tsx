@@ -73,6 +73,7 @@ export function SideScrollerScene() {
   const characterTexture = useLoader(THREE.TextureLoader, "/character.png");
   const gemTexture = useLoader(THREE.TextureLoader, "/gem.png");
   const enemyTexture = useLoader(THREE.TextureLoader, "/enemy.png");
+  const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -273,12 +274,11 @@ export function SideScrollerScene() {
         );
       })}
 
-      {/* Platform decorations */}
-      {[...Array(20)].map((_, i) => (
-        <mesh key={`grass-${i}`} position={[i * 5, GROUND_Y + 0.15, 0.1]}>
-          <boxGeometry args={[0.5, 0.3, 0.1]} />
-          <meshBasicMaterial color="#228B22" />
-        </mesh>
+      {/* Trees - positioned behind character */}
+      {[...Array(10)].map((_, i) => (
+        <sprite key={`tree-${i}`} position={[i * 5 + 2, GROUND_Y + 1.5, -0.5]} scale={[3, 3, 1]}>
+          <spriteMaterial map={treeTexture} transparent={true} />
+        </sprite>
       ))}
 
       {/* Player - raised by 0.3 units so feet aren't covered */}
