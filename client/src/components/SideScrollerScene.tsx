@@ -8,7 +8,7 @@ import * as THREE from "three";
 const GRAVITY = -15;
 const JUMP_VELOCITY = 14;
 const MOVE_SPEED = 4;
-const GROUND_Y = 0;
+const GROUND_Y = -2;
 const PLAYER_SIZE = 0.5;
 const MISSILE_SPEED = 12;
 
@@ -218,7 +218,7 @@ export function SideScrollerScene() {
   return (
     <group>
       {/* Sky/Background */}
-      <mesh position={[25, 5, -5]}>
+      <mesh position={[25, 1, -5]}>
         <planeGeometry args={[100, 30]} />
         <meshBasicMaterial color="#87CEEB" />
       </mesh>
@@ -229,21 +229,34 @@ export function SideScrollerScene() {
         <meshBasicMaterial color="#8B4513" />
       </mesh>
 
-      {/* Hills */}
+      {/* Hills - create visual representation that matches collision */}
       {HILLS.map((hill, idx) => {
-        const centerX = (hill.startX + hill.endX) / 2;
+        // Create hill shape using multiple segments to match cosine curve
+        const segments = 12;
         const width = hill.endX - hill.startX;
+        const segmentWidth = width / segments;
+        
         return (
-          <mesh key={`hill-${idx}`} position={[centerX, GROUND_Y + hill.height / 2, -0.1]}>
-            <boxGeometry args={[width, hill.height, 1]} />
-            <meshBasicMaterial color="#6B8E23" />
-          </mesh>
+          <group key={`hill-${idx}`}>
+            {[...Array(segments)].map((_, i) => {
+              const x = hill.startX + i * segmentWidth + segmentWidth / 2;
+              const terrainHeight = getTerrainHeight(x);
+              const actualHeight = terrainHeight - GROUND_Y;
+              
+              return (
+                <mesh key={i} position={[x, GROUND_Y + actualHeight / 2, -0.1]}>
+                  <boxGeometry args={[segmentWidth * 1.1, actualHeight, 1]} />
+                  <meshBasicMaterial color="#6B8E23" />
+                </mesh>
+              );
+            })}
+          </group>
         );
       })}
 
       {/* Platform decorations */}
       {[...Array(20)].map((_, i) => (
-        <mesh key={`grass-${i}`} position={[i * 5, GROUND_Y, 0.1]}>
+        <mesh key={`grass-${i}`} position={[i * 5, GROUND_Y + 0.15, 0.1]}>
           <boxGeometry args={[0.5, 0.3, 0.1]} />
           <meshBasicMaterial color="#228B22" />
         </mesh>
