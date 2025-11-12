@@ -8,7 +8,7 @@ import * as THREE from "three";
 const GRAVITY = -15;
 const JUMP_VELOCITY = 14;
 const MOVE_SPEED = 4;
-const GROUND_Y = -2;
+const GROUND_Y = -5;
 const PLAYER_SIZE = 0.5;
 const MISSILE_SPEED = 12;
 
