@@ -790,14 +790,44 @@ export const useTankGame = create<TankGameState>()(
         platformerReachedFlag: false,
       });
 
-      // Generate gems (more gems at higher levels)
-      const numGems = 5 + currentLevel * 2;
+      // Generate platforms (floating platforms in the sky)
+      const platforms: Platform[] = [
+        // Level 1 platforms - lower difficulty
+        { id: 'plat-1', x: 10, y: -1, width: 4, height: 0.5 },
+        { id: 'plat-2', x: 16, y: 1, width: 3, height: 0.5 },
+        { id: 'plat-3', x: 22, y: -0.5, width: 4, height: 0.5 },
+        { id: 'plat-4', x: 28, y: 2, width: 3, height: 0.5 },
+        { id: 'plat-5', x: 34, y: 0.5, width: 4, height: 0.5 },
+        { id: 'plat-6', x: 40, y: 1.5, width: 3, height: 0.5 },
+      ];
+
+      // Generate gems on platforms and scattered on terrain
       const gems: Gem[] = [];
-      for (let i = 0; i < numGems; i++) {
+      let gemIdCounter = 0;
+      
+      // Add rows of gems on top of each platform
+      platforms.forEach((platform) => {
+        const numGemsOnPlatform = Math.floor(platform.width / 0.8); // Space gems ~0.8 units apart
+        const startX = platform.x - (numGemsOnPlatform - 1) * 0.8 / 2; // Center the row on platform
+        const gemY = platform.y + platform.height / 2 + 0.8; // Place gems above platform
+        
+        for (let i = 0; i < numGemsOnPlatform; i++) {
+          gems.push({
+            id: `gem-${gemIdCounter++}`,
+            x: startX + i * 0.8,
+            y: gemY,
+            collected: false,
+          });
+        }
+      });
+      
+      // Add some scattered gems on terrain for variety
+      const numScatteredGems = 3 + currentLevel;
+      for (let i = 0; i < numScatteredGems; i++) {
         gems.push({
-          id: `gem-${i}`,
-          x: 5 + i * 3,
-          y: -3 + Math.random() * 6, // Range from -3 to 3, covering low to high
+          id: `gem-${gemIdCounter++}`,
+          x: 5 + i * 4,
+          y: -3 + Math.random() * 2, // Lower altitude for terrain gems
           collected: false,
         });
       }
@@ -825,17 +855,6 @@ export const useTankGame = create<TankGameState>()(
           type: type,
         });
       }
-
-      // Generate platforms (floating platforms in the sky)
-      const platforms: Platform[] = [
-        // Level 1 platforms - lower difficulty
-        { id: 'plat-1', x: 10, y: -1, width: 4, height: 0.5 },
-        { id: 'plat-2', x: 16, y: 1, width: 3, height: 0.5 },
-        { id: 'plat-3', x: 22, y: -0.5, width: 4, height: 0.5 },
-        { id: 'plat-4', x: 28, y: 2, width: 3, height: 0.5 },
-        { id: 'plat-5', x: 34, y: 0.5, width: 4, height: 0.5 },
-        { id: 'plat-6', x: 40, y: 1.5, width: 3, height: 0.5 },
-      ];
 
       set({
         platformerGems: gems,
