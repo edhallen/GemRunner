@@ -67,6 +67,8 @@ export interface PlatformerEnemy {
   patrolRight: number;
   isAlive: boolean;
   type: 'enemy1' | 'enemy2' | 'enemy3';
+  health: number;
+  maxHealth: number;
 }
 
 export interface Gem {
@@ -166,6 +168,7 @@ interface TankGameState {
   updatePlatformerPlayer: (x: number, y: number, vx: number, vy: number, grounded: boolean) => void;
   setPlatformerEnemies: (enemies: PlatformerEnemy[]) => void;
   updatePlatformerEnemy: (id: string, updates: Partial<PlatformerEnemy>) => void;
+  damagePlatformerEnemy: (id: string, damage: number) => void;
   defeatPlatformerEnemy: (id: string) => void;
   collectGem: (id: string) => void;
   reachFlag: () => void;
@@ -761,10 +764,29 @@ export const useTankGame = create<TankGameState>()(
       }));
     },
 
+    damagePlatformerEnemy: (id, damage) => {
+      const enemy = get().platformerEnemies.find(e => e.id === id);
+      if (!enemy || !enemy.isAlive) return;
+      
+      const newHealth = Math.max(0, enemy.health - damage);
+      
+      if (newHealth <= 0) {
+        // Enemy defeated
+        get().defeatPlatformerEnemy(id);
+      } else {
+        // Enemy damaged but still alive
+        set((state) => ({
+          platformerEnemies: state.platformerEnemies.map(e =>
+            e.id === id ? { ...e, health: newHealth } : e
+          ),
+        }));
+      }
+    },
+
     defeatPlatformerEnemy: (id) => {
       set((state) => ({
         platformerEnemies: state.platformerEnemies.map(e => 
-          e.id === id ? { ...e, isAlive: false } : e
+          e.id === id ? { ...e, isAlive: false, health: 0 } : e
         ),
         enemiesDefeated: state.enemiesDefeated + 1,
       }));
@@ -870,6 +892,14 @@ export const useTankGame = create<TankGameState>()(
         const y = 0.5; // Will be adjusted to terrain height in game loop
         const type = enemyTypes[i % enemyTypes.length]; // Cycle through enemy types
         
+        // Different enemy types have different health
+        let maxHealth = 3; // Default health (requires 3 missile hits)
+        if (type === 'enemy2') {
+          maxHealth = 4; // Green blob is tougher
+        } else if (type === 'enemy3') {
+          maxHealth = 5; // Robot skeleton is toughest
+        }
+        
         enemies.push({
           id: `enemy-${i}`,
           x: x,
@@ -879,6 +909,8 @@ export const useTankGame = create<TankGameState>()(
           patrolRight: Math.min(levelEnd, x + 4),
           isAlive: true,
           type: type,
+          health: maxHealth,
+          maxHealth: maxHealth,
         });
       }
 

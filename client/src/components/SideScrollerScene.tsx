@@ -93,6 +93,7 @@ export function SideScrollerScene() {
   const platformerReachedFlag = useTankGame(state => state.platformerReachedFlag);
   const updatePlatformerPlayer = useTankGame(state => state.updatePlatformerPlayer);
   const updatePlatformerEnemy = useTankGame(state => state.updatePlatformerEnemy);
+  const damagePlatformerEnemy = useTankGame(state => state.damagePlatformerEnemy);
   const defeatPlatformerEnemy = useTankGame(state => state.defeatPlatformerEnemy);
   const collectGem = useTankGame(state => state.collectGem);
   const reachFlag = useTankGame(state => state.reachFlag);
@@ -373,7 +374,10 @@ export function SideScrollerScene() {
                 time: Date.now()
               }]);
               
-              defeatPlatformerEnemy(enemy.id);
+              // Damage enemy instead of instant defeat (1 damage per missile hit)
+              damagePlatformerEnemy(enemy.id, 1);
+              console.log(`Enemy ${enemy.id} damaged! Health: ${enemy.health - 1}/${enemy.maxHealth}`);
+              
               return false; // Remove missile after hit
             }
           }
