@@ -88,6 +88,7 @@ export function SideScrollerScene() {
   const platformerEnemies = useTankGame(state => state.platformerEnemies);
   const platformerGems = useTankGame(state => state.platformerGems);
   const platformerPlatforms = useTankGame(state => state.platformerPlatforms);
+  const platformerPoopBlobs = useTankGame(state => state.platformerPoopBlobs);
   const platformerMissiles = useTankGame(state => state.platformerMissiles);
   const platformerReachedFlag = useTankGame(state => state.platformerReachedFlag);
   const updatePlatformerPlayer = useTankGame(state => state.updatePlatformerPlayer);
@@ -298,8 +299,42 @@ export function SideScrollerScene() {
       }
     });
 
-    // Check if reached flag (flag is at x = 48)
-    if (newX >= 47.5 && !platformerReachedFlag) {
+    // Check poop blob collision (player must jump over them)
+    platformerPoopBlobs.forEach(blob => {
+      const blobLeft = blob.x - blob.width / 2;
+      const blobRight = blob.x + blob.width / 2;
+      const blobTop = blob.y + blob.height / 2;
+      
+      // Check if player is horizontally aligned with blob
+      if (newX >= blobLeft && newX <= blobRight) {
+        // Check if player is low enough to hit the blob (not jumping high enough)
+        // Player needs to be at least 1.5 units above ground to clear the blob
+        const playerBottomY = newY - PLAYER_SIZE / 2;
+        const clearanceHeight = blobTop + 0.5; // Need to be 0.5 units above blob top to clear it
+        
+        if (playerBottomY <= clearanceHeight) {
+          // Player hit the poop blob! Apply damage with cooldown
+          const now = Date.now();
+          if (now - lastDamageTime.current > 800) {
+            takePlatformerDamage(15);
+            lastDamageTime.current = now;
+            console.log("Player hit poop blob!");
+            
+            // Play hit sound effect
+            if (hitSound.current) {
+              hitSound.current.currentTime = 0;
+              hitSound.current.play().catch(err => console.log("Audio play failed:", err));
+            }
+            
+            // Apply knockback
+            newVY = 6; // Push player up
+          }
+        }
+      }
+    });
+
+    // Check if reached flag (flag is at x = 120)
+    if (newX >= 119.5 && !platformerReachedFlag) {
       console.log("Player reached the flag!");
       reachFlag();
     }
@@ -317,7 +352,7 @@ export function SideScrollerScene() {
         }))
         .filter(missile => {
           // Remove missiles that are off-screen (past the level end)
-          if (missile.x > 60) return false;
+          if (missile.x > 130) return false;
 
           // Check collision with enemies
           for (const enemy of platformerEnemies) {
@@ -359,14 +394,14 @@ export function SideScrollerScene() {
   return (
     <group>
       {/* Sky/Background */}
-      <mesh position={[25, 1, -5]}>
-        <planeGeometry args={[100, 30]} />
+      <mesh position={[60, 1, -5]}>
+        <planeGeometry args={[250, 30]} />
         <meshBasicMaterial color="#87CEEB" />
       </mesh>
 
       {/* Ground */}
-      <mesh position={[25, GROUND_Y - 0.5, 0]}>
-        <boxGeometry args={[100, 1, 1]} />
+      <mesh position={[60, GROUND_Y - 0.5, 0]}>
+        <boxGeometry args={[250, 1, 1]} />
         <meshBasicMaterial color="#8B4513" />
       </mesh>
 
@@ -403,8 +438,16 @@ export function SideScrollerScene() {
         </mesh>
       ))}
 
+      {/* Poop Blobs - obstacles on ground that player must jump over */}
+      {platformerPoopBlobs.map(blob => (
+        <mesh key={blob.id} position={[blob.x, blob.y, -0.15]} scale={[blob.width, blob.height * 0.6, blob.width * 0.8]}>
+          <sphereGeometry args={[0.5, 16, 12]} />
+          <meshBasicMaterial color="#6B4423" />
+        </mesh>
+      ))}
+
       {/* Trees - positioned behind character */}
-      {[...Array(10)].map((_, i) => (
+      {[...Array(25)].map((_, i) => (
         <sprite key={`tree-${i}`} position={[i * 5 + 2, GROUND_Y + 1.5, -0.5]} scale={[3, 3, 1]}>
           <spriteMaterial map={treeTexture} transparent={true} />
         </sprite>
@@ -447,7 +490,7 @@ export function SideScrollerScene() {
       })}
 
       {/* Flag (win condition) */}
-      <group position={[48, GROUND_Y + 2, 0]}>
+      <group position={[120, GROUND_Y + 2, 0]}>
         <mesh position={[0, -1, 0]}>
           <cylinderGeometry args={[0.1, 0.1, 4]} />
           <meshBasicMaterial color="#654321" />

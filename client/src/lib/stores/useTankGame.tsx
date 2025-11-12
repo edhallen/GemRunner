@@ -84,6 +84,14 @@ export interface Platform {
   height: number;
 }
 
+export interface PoopBlob {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface TankGameState {
   phase: GamePhase;
   playerName: string;
@@ -116,6 +124,7 @@ interface TankGameState {
   platformerEnemies: PlatformerEnemy[];
   platformerGems: Gem[];
   platformerPlatforms: Platform[];
+  platformerPoopBlobs: PoopBlob[];
   platformerMissiles: Bullet[];
   platformerReachedFlag: boolean;
   
@@ -372,6 +381,7 @@ export const useTankGame = create<TankGameState>()(
     platformerEnemies: [],
     platformerGems: [],
     platformerPlatforms: [],
+    platformerPoopBlobs: [],
     platformerMissiles: [],
     platformerReachedFlag: false,
     
@@ -563,6 +573,7 @@ export const useTankGame = create<TankGameState>()(
           platformerEnemies: [],
           platformerGems: [],
           platformerPlatforms: [],
+          platformerPoopBlobs: [],
           platformerMissiles: [],
           platformerReachedFlag: false,
           currentQuestion: getQuestionForLevel(newLevel, newQuizMode),
@@ -603,6 +614,7 @@ export const useTankGame = create<TankGameState>()(
         platformerEnemies: [],
         platformerGems: [],
         platformerPlatforms: [],
+        platformerPoopBlobs: [],
         platformerMissiles: [],
         platformerReachedFlag: false,
         enemiesDefeated: 0,
@@ -790,15 +802,26 @@ export const useTankGame = create<TankGameState>()(
         platformerReachedFlag: false,
       });
 
-      // Generate platforms (floating platforms in the sky)
+      // Generate platforms (floating platforms in the sky) - more platforms for longer level
       const platforms: Platform[] = [
-        // Level 1 platforms - lower difficulty
         { id: 'plat-1', x: 10, y: -1, width: 4, height: 0.5 },
         { id: 'plat-2', x: 16, y: 1, width: 3, height: 0.5 },
         { id: 'plat-3', x: 22, y: -0.5, width: 4, height: 0.5 },
         { id: 'plat-4', x: 28, y: 2, width: 3, height: 0.5 },
         { id: 'plat-5', x: 34, y: 0.5, width: 4, height: 0.5 },
         { id: 'plat-6', x: 40, y: 1.5, width: 3, height: 0.5 },
+        { id: 'plat-7', x: 46, y: -0.5, width: 4, height: 0.5 },
+        { id: 'plat-8', x: 52, y: 1, width: 3, height: 0.5 },
+        { id: 'plat-9', x: 58, y: 2.5, width: 4, height: 0.5 },
+        { id: 'plat-10', x: 64, y: 0, width: 3, height: 0.5 },
+        { id: 'plat-11', x: 70, y: 1.5, width: 4, height: 0.5 },
+        { id: 'plat-12', x: 76, y: -1, width: 3, height: 0.5 },
+        { id: 'plat-13', x: 82, y: 2, width: 4, height: 0.5 },
+        { id: 'plat-14', x: 88, y: 0.5, width: 3, height: 0.5 },
+        { id: 'plat-15', x: 94, y: 1.5, width: 4, height: 0.5 },
+        { id: 'plat-16', x: 100, y: -0.5, width: 3, height: 0.5 },
+        { id: 'plat-17', x: 106, y: 1, width: 4, height: 0.5 },
+        { id: 'plat-18', x: 112, y: 2, width: 3, height: 0.5 },
       ];
 
       // Generate gems on platforms and scattered on terrain
@@ -832,15 +855,18 @@ export const useTankGame = create<TankGameState>()(
         });
       }
 
-      // Generate enemies (more enemies at higher levels)
-      const numEnemies = 4 + currentLevel * 2; // Increased from 2 + currentLevel
+      // Generate enemies (many more enemies for longer levels)
+      const numEnemies = 15 + currentLevel * 5; // Significantly increased enemy count
       const enemies: PlatformerEnemy[] = [];
       const enemyTypes: Array<'enemy1' | 'enemy2' | 'enemy3'> = ['enemy1', 'enemy2', 'enemy3'];
       
+      // Spread enemies evenly across the level (from x=8 to x=115)
+      const levelStart = 8;
+      const levelEnd = 115; // Leave space before flag at 120
+      const spacing = (levelEnd - levelStart) / Math.max(1, numEnemies - 1);
+      
       for (let i = 0; i < numEnemies; i++) {
-        // Spread enemies across the level at varied X positions
-        const xPositions = [12, 18, 24, 30, 32, 36, 38, 42];
-        const x = xPositions[i % xPositions.length];
+        const x = levelStart + (i * spacing);
         const y = 0.5; // Will be adjusted to terrain height in game loop
         const type = enemyTypes[i % enemyTypes.length]; // Cycle through enemy types
         
@@ -848,11 +874,32 @@ export const useTankGame = create<TankGameState>()(
           id: `enemy-${i}`,
           x: x,
           y: y,
-          vx: 0.5,
-          patrolLeft: x - 3,
-          patrolRight: x + 3,
+          vx: 0.5 + (Math.random() * 0.3), // Varied speed for variety
+          patrolLeft: Math.max(levelStart, x - 4),
+          patrolRight: Math.min(levelEnd, x + 4),
           isAlive: true,
           type: type,
+        });
+      }
+
+      // Generate poop blobs (obstacles on the ground that player must jump over)
+      const numPoopBlobs = 10 + currentLevel * 3;
+      const poopBlobs: PoopBlob[] = [];
+      const blobWidth = 1.2;
+      
+      // Spread poop blobs evenly across the level, accounting for their width
+      const blobStart = 12 + blobWidth / 2; // Account for left edge
+      const blobEnd = 108 - blobWidth / 2; // Account for right edge, leave space before flag
+      const blobSpacing = numPoopBlobs > 1 ? (blobEnd - blobStart) / (numPoopBlobs - 1) : 0;
+      
+      for (let i = 0; i < numPoopBlobs; i++) {
+        const x = blobStart + (i * blobSpacing);
+        poopBlobs.push({
+          id: `poop-${i}`,
+          x: x,
+          y: -4.75, // Ground level (GROUND_Y is -5)
+          width: blobWidth,
+          height: 0.8,
         });
       }
 
@@ -860,6 +907,7 @@ export const useTankGame = create<TankGameState>()(
         platformerGems: gems,
         platformerEnemies: enemies,
         platformerPlatforms: platforms,
+        platformerPoopBlobs: poopBlobs,
       });
     },
 
