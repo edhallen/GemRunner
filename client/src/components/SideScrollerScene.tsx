@@ -392,13 +392,18 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
-      {/* Missiles - bright orange blocks rendered as planes for visibility */}
-      {platformerMissiles.map(missile => (
-        <mesh key={missile.id} position={[missile.x, missile.y, 0.2]} rotation={[0, 0, 0]}>
-          <planeGeometry args={[0.6, 0.3]} />
-          <meshBasicMaterial color="#FF6600" side={THREE.DoubleSide} />
-        </mesh>
-      ))}
+      {/* Missiles - bright red boxes, larger and very visible */}
+      {platformerMissiles.map(missile => {
+        if (platformerMissiles.length > 0) {
+          console.log(`Rendering missile at x:${missile.x}, y:${missile.y}`);
+        }
+        return (
+          <mesh key={missile.id} position={[missile.x, missile.y, 0.5]}>
+            <boxGeometry args={[0.8, 0.4, 0.4]} />
+            <meshBasicMaterial color="#FF0000" />
+          </mesh>
+        );
+      })}
       
       {/* Explosions */}
       {explosions.map(explosion => (
