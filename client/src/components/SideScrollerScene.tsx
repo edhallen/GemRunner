@@ -129,6 +129,8 @@ export function SideScrollerScene() {
   const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
   const poopTexture = useLoader(THREE.TextureLoader, "/poop.png");
   const platformTileTexture = useLoader(THREE.TextureLoader, "/platform_tile.png");
+  const groundTileTexture = useLoader(THREE.TextureLoader, "/ground_tile.png");
+  const backgroundTexture = useLoader(THREE.TextureLoader, "/background.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -399,17 +401,19 @@ export function SideScrollerScene() {
 
   return (
     <group>
-      {/* Sky/Background */}
-      <mesh position={[120, 1, -5]}>
-        <planeGeometry args={[260, 30]} />
-        <meshBasicMaterial color="#87CEEB" />
-      </mesh>
+      {/* Tiled Background - positioned far back */}
+      {[...Array(Math.ceil(260 / 20))].map((_, i) => (
+        <sprite key={`bg-${i}`} position={[i * 20 + 10, 1, -5]} scale={[20, 15, 1]}>
+          <spriteMaterial map={backgroundTexture} transparent={false} />
+        </sprite>
+      ))}
 
-      {/* Ground */}
-      <mesh position={[120, GROUND_Y - 0.5, 0]}>
-        <boxGeometry args={[260, 1, 1]} />
-        <meshBasicMaterial color="#8B4513" />
-      </mesh>
+      {/* Tiled Ground - show ground tiles side by side */}
+      {[...Array(Math.ceil(260 / 1))].map((_, i) => (
+        <sprite key={`ground-${i}`} position={[i + 0.5, GROUND_Y - 0.5, 0]} scale={[1, 1, 1]}>
+          <spriteMaterial map={groundTileTexture} transparent={true} />
+        </sprite>
+      ))}
 
       {/* Hills - create visual representation that matches collision */}
       {HILLS.map((hill, idx) => {
