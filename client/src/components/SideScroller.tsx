@@ -21,7 +21,7 @@ export function SideScroller() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <Canvas
-        camera={{ position: [0, -5.0, 20], zoom: 150, near: 0.1, far: 200 }}
+        camera={{ position: [0, -3.5, 20], zoom: 150, near: 0.1, far: 200 }}
         orthographic
       >
         <CameraFollow />
