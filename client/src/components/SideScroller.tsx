@@ -12,6 +12,9 @@ function CameraFollow() {
     // Smooth camera follow with forward look-ahead for Mario/Sonic-style visibility
     const targetX = platformerPlayerX + 2; // Position player left-of-center for 6-8 units forward visibility
     camera.position.x += (targetX - camera.position.x) * 0.12;
+    
+    // Keep camera Y position fixed to show ground at bottom of screen
+    camera.position.y = -3.5;
   });
 
   return null;
