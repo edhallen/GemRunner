@@ -11,7 +11,7 @@ function CameraFollow() {
   useFrame(() => {
     // Smooth camera follow with forward look-ahead for Mario/Sonic-style visibility
     const targetX = platformerPlayerX + 2; // Position player left-of-center for 6-8 units forward visibility
-    const targetY = -4.8; // Position camera lower so character's feet are near bottom with thin sliver of ground
+    const targetY = -3.0; // Position camera higher so ground appears lower on screen with thin sliver visible
     
     camera.position.x += (targetX - camera.position.x) * 0.12;
     camera.position.y = targetY;
