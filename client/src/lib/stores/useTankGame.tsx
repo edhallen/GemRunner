@@ -825,25 +825,26 @@ export const useTankGame = create<TankGameState>()(
       });
 
       // Generate platforms - varied heights, all reachable, Mario/Sonic style
+      // Positioned at least 1 character height above highest mountain (y >= -1.5)
       const platforms: Platform[] = [
-        { id: 'plat-1', x: 10, y: -3.5, width: 4, height: 0.5 },
-        { id: 'plat-2', x: 16, y: -3.8, width: 3, height: 0.5 },
-        { id: 'plat-3', x: 22, y: -3.2, width: 4, height: 0.5 },
-        { id: 'plat-4', x: 28, y: -3.6, width: 3, height: 0.5 },
-        { id: 'plat-5', x: 34, y: -3.8, width: 4, height: 0.5 },
-        { id: 'plat-6', x: 40, y: -3.3, width: 3, height: 0.5 },
-        { id: 'plat-7', x: 46, y: -3.7, width: 4, height: 0.5 },
-        { id: 'plat-8', x: 52, y: -3.9, width: 3, height: 0.5 },
-        { id: 'plat-9', x: 58, y: -3.4, width: 4, height: 0.5 },
-        { id: 'plat-10', x: 64, y: -3.6, width: 3, height: 0.5 },
-        { id: 'plat-11', x: 70, y: -3.8, width: 4, height: 0.5 },
-        { id: 'plat-12', x: 76, y: -3.3, width: 3, height: 0.5 },
-        { id: 'plat-13', x: 82, y: -3.7, width: 4, height: 0.5 },
-        { id: 'plat-14', x: 88, y: -3.9, width: 3, height: 0.5 },
-        { id: 'plat-15', x: 94, y: -3.4, width: 4, height: 0.5 },
-        { id: 'plat-16', x: 100, y: -3.6, width: 3, height: 0.5 },
-        { id: 'plat-17', x: 106, y: -3.8, width: 4, height: 0.5 },
-        { id: 'plat-18', x: 112, y: -3.5, width: 3, height: 0.5 },
+        { id: 'plat-1', x: 10, y: -1.3, width: 4, height: 0.5 },
+        { id: 'plat-2', x: 16, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-3', x: 22, y: -0.9, width: 4, height: 0.5 },
+        { id: 'plat-4', x: 28, y: -1.2, width: 3, height: 0.5 },
+        { id: 'plat-5', x: 34, y: -1.5, width: 4, height: 0.5 },
+        { id: 'plat-6', x: 40, y: -1.0, width: 3, height: 0.5 },
+        { id: 'plat-7', x: 46, y: -1.4, width: 4, height: 0.5 },
+        { id: 'plat-8', x: 52, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-9', x: 58, y: -1.1, width: 4, height: 0.5 },
+        { id: 'plat-10', x: 64, y: -1.3, width: 3, height: 0.5 },
+        { id: 'plat-11', x: 70, y: -1.5, width: 4, height: 0.5 },
+        { id: 'plat-12', x: 76, y: -1.0, width: 3, height: 0.5 },
+        { id: 'plat-13', x: 82, y: -1.4, width: 4, height: 0.5 },
+        { id: 'plat-14', x: 88, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-15', x: 94, y: -1.1, width: 4, height: 0.5 },
+        { id: 'plat-16', x: 100, y: -1.3, width: 3, height: 0.5 },
+        { id: 'plat-17', x: 106, y: -1.5, width: 4, height: 0.5 },
+        { id: 'plat-18', x: 112, y: -1.2, width: 3, height: 0.5 },
       ];
 
       // Generate gems on platforms and scattered on terrain

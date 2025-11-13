@@ -318,7 +318,7 @@ export function SideScrollerScene() {
           // Player hit the poop blob! Apply damage with cooldown
           const now = Date.now();
           if (now - lastDamageTime.current > 800) {
-            takePlatformerDamage(15);
+            takePlatformerDamage(5);
             lastDamageTime.current = now;
             console.log("Player hit poop blob!");
             
