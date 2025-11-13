@@ -131,6 +131,7 @@ export function SideScrollerScene() {
   const platformTileTexture = useLoader(THREE.TextureLoader, "/platform_tile.png");
   const groundTileTexture = useLoader(THREE.TextureLoader, "/ground_tile.png");
   const backgroundTexture = useLoader(THREE.TextureLoader, "/background.png");
+  const rocketTexture = useLoader(THREE.TextureLoader, "/rocket.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -518,12 +519,11 @@ export function SideScrollerScene() {
         </mesh>
       </group>
 
-      {/* Missiles - bright red rectangles */}
+      {/* Missiles - rocket sprites */}
       {platformerMissiles.map(missile => (
-        <mesh key={missile.id} position={[missile.x, missile.y, 0.3]} rotation={[0, 0, 0]}>
-          <planeGeometry args={[0.5, 0.25]} />
-          <meshBasicMaterial color="#FF0000" side={THREE.DoubleSide} />
-        </mesh>
+        <sprite key={missile.id} position={[missile.x, missile.y, 0.3]} scale={[1, 0.5, 1]}>
+          <spriteMaterial map={rocketTexture} transparent={true} />
+        </sprite>
       ))}
       
       {/* Explosions */}
