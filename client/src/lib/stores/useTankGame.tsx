@@ -826,6 +826,7 @@ export const useTankGame = create<TankGameState>()(
 
       // Generate platforms - varied heights, all reachable, Mario/Sonic style
       // Positioned at least 1 character height above highest mountain (y >= -1.5)
+      // 36 platforms spread across the 240-unit level
       const platforms: Platform[] = [
         { id: 'plat-1', x: 10, y: -1.3, width: 4, height: 0.5 },
         { id: 'plat-2', x: 16, y: -1.5, width: 3, height: 0.5 },
@@ -845,6 +846,24 @@ export const useTankGame = create<TankGameState>()(
         { id: 'plat-16', x: 100, y: -1.3, width: 3, height: 0.5 },
         { id: 'plat-17', x: 106, y: -1.5, width: 4, height: 0.5 },
         { id: 'plat-18', x: 112, y: -1.2, width: 3, height: 0.5 },
+        { id: 'plat-19', x: 118, y: -1.4, width: 4, height: 0.5 },
+        { id: 'plat-20', x: 124, y: -0.9, width: 3, height: 0.5 },
+        { id: 'plat-21', x: 130, y: -1.3, width: 4, height: 0.5 },
+        { id: 'plat-22', x: 136, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-23', x: 142, y: -1.0, width: 4, height: 0.5 },
+        { id: 'plat-24', x: 148, y: -1.2, width: 3, height: 0.5 },
+        { id: 'plat-25', x: 154, y: -1.5, width: 4, height: 0.5 },
+        { id: 'plat-26', x: 160, y: -1.1, width: 3, height: 0.5 },
+        { id: 'plat-27', x: 166, y: -1.4, width: 4, height: 0.5 },
+        { id: 'plat-28', x: 172, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-29', x: 178, y: -0.9, width: 4, height: 0.5 },
+        { id: 'plat-30', x: 184, y: -1.3, width: 3, height: 0.5 },
+        { id: 'plat-31', x: 190, y: -1.5, width: 4, height: 0.5 },
+        { id: 'plat-32', x: 196, y: -1.0, width: 3, height: 0.5 },
+        { id: 'plat-33', x: 202, y: -1.4, width: 4, height: 0.5 },
+        { id: 'plat-34', x: 208, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-35', x: 214, y: -1.1, width: 4, height: 0.5 },
+        { id: 'plat-36', x: 220, y: -1.3, width: 3, height: 0.5 },
       ];
 
       // Generate gems on platforms and scattered on terrain
@@ -883,9 +902,9 @@ export const useTankGame = create<TankGameState>()(
       const enemies: PlatformerEnemy[] = [];
       const enemyTypes: Array<'enemy1' | 'enemy2' | 'enemy3'> = ['enemy1', 'enemy2', 'enemy3'];
       
-      // Spread enemies evenly across the level (from x=8 to x=115)
+      // Spread enemies evenly across the level (from x=8 to x=235)
       const levelStart = 8;
-      const levelEnd = 115; // Leave space before flag at 120
+      const levelEnd = 235; // Leave space before flag at 240
       const spacing = (levelEnd - levelStart) / Math.max(1, numEnemies - 1);
       
       for (let i = 0; i < numEnemies; i++) {
@@ -922,7 +941,7 @@ export const useTankGame = create<TankGameState>()(
       
       // Spread poop blobs evenly across the level, accounting for their width
       const blobStart = 12 + blobWidth / 2; // Account for left edge
-      const blobEnd = 108 - blobWidth / 2; // Account for right edge, leave space before flag
+      const blobEnd = 228 - blobWidth / 2; // Account for right edge, leave space before flag at 240
       const blobSpacing = numPoopBlobs > 1 ? (blobEnd - blobStart) / (numPoopBlobs - 1) : 0;
       
       for (let i = 0; i < numPoopBlobs; i++) {

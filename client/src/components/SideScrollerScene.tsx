@@ -335,8 +335,8 @@ export function SideScrollerScene() {
       }
     });
 
-    // Check if reached flag (flag is at x = 120)
-    if (newX >= 119.5 && !platformerReachedFlag) {
+    // Check if reached flag (flag is at x = 240)
+    if (newX >= 239.5 && !platformerReachedFlag) {
       console.log("Player reached the flag!");
       reachFlag();
     }
@@ -354,7 +354,7 @@ export function SideScrollerScene() {
         }))
         .filter(missile => {
           // Remove missiles that are off-screen (past the level end)
-          if (missile.x > 130) return false;
+          if (missile.x > 250) return false;
 
           // Check collision with enemies
           for (const enemy of platformerEnemies) {
@@ -399,14 +399,14 @@ export function SideScrollerScene() {
   return (
     <group>
       {/* Sky/Background */}
-      <mesh position={[60, 1, -5]}>
-        <planeGeometry args={[250, 30]} />
+      <mesh position={[120, 1, -5]}>
+        <planeGeometry args={[260, 30]} />
         <meshBasicMaterial color="#87CEEB" />
       </mesh>
 
       {/* Ground */}
-      <mesh position={[60, GROUND_Y - 0.5, 0]}>
-        <boxGeometry args={[250, 1, 1]} />
+      <mesh position={[120, GROUND_Y - 0.5, 0]}>
+        <boxGeometry args={[260, 1, 1]} />
         <meshBasicMaterial color="#8B4513" />
       </mesh>
 
@@ -451,7 +451,7 @@ export function SideScrollerScene() {
       ))}
 
       {/* Trees - positioned behind character */}
-      {[...Array(25)].map((_, i) => (
+      {[...Array(50)].map((_, i) => (
         <sprite key={`tree-${i}`} position={[i * 5 + 2, GROUND_Y + 1.5, -0.5]} scale={[3, 3, 1]}>
           <spriteMaterial map={treeTexture} transparent={true} />
         </sprite>
@@ -494,7 +494,7 @@ export function SideScrollerScene() {
       })}
 
       {/* Flag (win condition) */}
-      <group position={[120, GROUND_Y + 2, 0]}>
+      <group position={[240, GROUND_Y + 2, 0]}>
         <mesh position={[0, -1, 0]}>
           <cylinderGeometry args={[0.1, 0.1, 4]} />
           <meshBasicMaterial color="#654321" />
