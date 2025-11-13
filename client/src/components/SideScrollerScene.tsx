@@ -128,6 +128,7 @@ export function SideScrollerScene() {
   const enemy3Texture = useLoader(THREE.TextureLoader, "/enemy3.png");
   const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
   const poopTexture = useLoader(THREE.TextureLoader, "/poop.png");
+  const platformTileTexture = useLoader(THREE.TextureLoader, "/platform_tile.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -436,12 +437,20 @@ export function SideScrollerScene() {
       })}
 
       {/* Platforms - floating in the sky */}
-      {platformerPlatforms.map(platform => (
-        <mesh key={platform.id} position={[platform.x, platform.y, -0.2]}>
-          <boxGeometry args={[platform.width, platform.height, 1]} />
-          <meshBasicMaterial color="#A0522D" />
-        </mesh>
-      ))}
+      {platformerPlatforms.map(platform => {
+        // Each tile is 1 unit wide; show multiple tiles for wider platforms
+        const numTiles = Math.ceil(platform.width);
+        const tiles = [];
+        for (let i = 0; i < numTiles; i++) {
+          const tileX = platform.x - platform.width / 2 + 0.5 + i;
+          tiles.push(
+            <sprite key={`${platform.id}-tile-${i}`} position={[tileX, platform.y, -0.2]} scale={[1, platform.height, 1]}>
+              <spriteMaterial map={platformTileTexture} transparent={true} />
+            </sprite>
+          );
+        }
+        return <group key={platform.id}>{tiles}</group>;
+      })}
 
       {/* Poop Blobs - obstacles on ground that player must jump over */}
       {platformerPoopBlobs.map(blob => (
