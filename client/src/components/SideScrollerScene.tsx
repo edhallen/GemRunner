@@ -464,9 +464,9 @@ export function SideScrollerScene() {
         </sprite>
       ))}
 
-      {/* Trees - positioned behind character */}
+      {/* Trees - positioned behind character at ground level */}
       {[...Array(50)].map((_, i) => (
-        <sprite key={`tree-${i}`} position={[i * 5 + 2, GROUND_Y + 1.5, -0.5]} scale={[3, 3, 1]}>
+        <sprite key={`tree-${i}`} position={[i * 5 + 2, GROUND_Y + 1, -0.5]} scale={[3, 3, 1]}>
           <spriteMaterial map={treeTexture} transparent={true} />
         </sprite>
       ))}
