@@ -329,7 +329,7 @@ const getLetterSoundQuestion = (): LetterSoundsQuestion => {
     id: `q-${Date.now()}-${Math.random()}`,
     type: "letter_sound",
     mode: "letter_sounds",
-    question: `Click the letter that makes this sound`,
+    question: `Click the letter you hear`,
     options: allOptions,
     correctAnswer: correctLetter,
     letterSound: letterSound,
@@ -479,10 +479,10 @@ export const useTankGame = create<TankGameState>()(
         let canAdvance = false;
         
         // Check requirements based on current quiz mode
-        if (currentQuizMode === "typing") {
+        if (currentQuizMode === "typing" || currentQuizMode === "letter_sounds") {
           canAdvance = typingQuizCorrect >= 3;
           if (!canAdvance) {
-            console.log(`Need 3 typing quiz correct! Current:`, typingQuizCorrect);
+            console.log(`Need 3 ${currentQuizMode === "letter_sounds" ? "letter" : "typing"} quiz correct! Current:`, typingQuizCorrect);
           }
         } else {
           canAdvance = lessonPoints >= requiredPoints;
@@ -615,15 +615,19 @@ export const useTankGame = create<TankGameState>()(
     },
 
     nextLevel: () => {
-      const { currentLevel } = get();
+      const { currentLevel, difficultyLevel } = get();
       const newLevel = currentLevel + 1;
       console.log("Advancing to level:", newLevel);
       
       if (newLevel > 5) {
         set({ currentLevel: newLevel, phase: "game_over" });
       } else {
-        // Select new quiz mode randomly for new level (50/50 chance)
-        const newQuizMode = Math.random() < 0.5 ? "typing" : "multiple_choice";
+        // Select quiz mode based on difficulty level
+        // For "letters" difficulty, use letter_sounds mode
+        // For "words" difficulty, randomly choose between typing and multiple_choice
+        const newQuizMode = difficultyLevel === "letters"
+          ? "letter_sounds"
+          : (Math.random() < 0.5 ? "typing" : "multiple_choice");
         console.log("Starting level", newLevel, "with quiz mode:", newQuizMode);
         
         set({
