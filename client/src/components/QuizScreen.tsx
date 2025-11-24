@@ -68,8 +68,8 @@ export function QuizScreen() {
       let textToSpeak = "";
       
       if (currentQuestion.mode === "letter_sounds") {
-        // For letter sounds, speak the letter name (not the phonetic sound)
-        textToSpeak = currentQuestion.correctAnswer;
+        // For letter sounds, speak the letter name in lowercase to avoid "capital" being spoken
+        textToSpeak = currentQuestion.correctAnswer.toLowerCase();
       } else if (currentQuestion.mode === "typing") {
         textToSpeak = currentQuestion.correctAnswer.toLowerCase();
       } else {

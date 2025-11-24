@@ -309,28 +309,44 @@ export const getRequiredLessonPoints = (level: number): number => {
 
 // Generate a letter sound question for letter learning mode
 const getLetterSoundQuestion = (): LetterSoundsQuestion => {
-  // Pick a random letter
-  const correctLetter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
-  const letterSound = LETTER_SOUNDS[correctLetter];
-  
-  // Generate 8 random distractor letters (total 9 letters displayed)
-  const distractors: string[] = [];
-  while (distractors.length < 8) {
-    const randomLetter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
-    if (randomLetter !== correctLetter && !distractors.includes(randomLetter)) {
-      distractors.push(randomLetter);
+  // Pick 9 unique letters (no duplicates even if one is upper and one is lower)
+  const selectedLetterIndices: number[] = [];
+  while (selectedLetterIndices.length < 9) {
+    const randomIndex = Math.floor(Math.random() * ALL_LETTERS.length);
+    if (!selectedLetterIndices.includes(randomIndex)) {
+      selectedLetterIndices.push(randomIndex);
     }
   }
   
-  // Combine and shuffle
-  const allOptions = shuffleArray([correctLetter, ...distractors]);
+  // Pick the correct letter from the selected ones
+  const correctIndex = Math.floor(Math.random() * selectedLetterIndices.length);
+  const correctLetter = ALL_LETTERS[selectedLetterIndices[correctIndex]];
+  const letterSound = LETTER_SOUNDS[correctLetter];
+  
+  // Create mix of upper and lower case letters from selected indices
+  // Guarantee at least one uppercase and one lowercase letter
+  const allOptions = selectedLetterIndices.map((index, i) => {
+    const baseLetter = ALL_LETTERS[index];
+    // First letter is always uppercase, second is always lowercase
+    // Remaining 7 are randomly assigned
+    if (i === 0) {
+      return baseLetter.toUpperCase();
+    } else if (i === 1) {
+      return baseLetter.toLowerCase();
+    } else {
+      return Math.random() < 0.5 ? baseLetter.toUpperCase() : baseLetter.toLowerCase();
+    }
+  });
+  
+  // Shuffle the options
+  const shuffledOptions = shuffleArray(allOptions);
   
   return {
     id: `q-${Date.now()}-${Math.random()}`,
     type: "letter_sound",
     mode: "letter_sounds",
     question: `Click the letter you hear`,
-    options: allOptions,
+    options: shuffledOptions,
     correctAnswer: correctLetter,
     letterSound: letterSound,
     level: 1
