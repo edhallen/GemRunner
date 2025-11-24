@@ -65,11 +65,19 @@ export function QuizScreen() {
 
   const speakWord = () => {
     if ('speechSynthesis' in window && synthRef.current && currentQuestion) {
-      const word = currentQuestion.mode === "typing" 
-        ? currentQuestion.correctAnswer 
-        : extractWordFromQuestion(currentQuestion.question);
+      let textToSpeak = "";
+      
+      if (currentQuestion.mode === "letter_sounds") {
+        // For letter sounds, speak the phonetic sound
+        textToSpeak = (currentQuestion as any).letterSound || currentQuestion.correctAnswer.toLowerCase();
+      } else if (currentQuestion.mode === "typing") {
+        textToSpeak = currentQuestion.correctAnswer.toLowerCase();
+      } else {
+        textToSpeak = extractWordFromQuestion(currentQuestion.question).toLowerCase();
+      }
+      
       window.speechSynthesis.cancel(); // Stop any current speech
-      synthRef.current.text = word.toLowerCase(); // Convert to lowercase so it's read as a word, not acronym
+      synthRef.current.text = textToSpeak;
       window.speechSynthesis.speak(synthRef.current);
     }
   };
@@ -104,9 +112,13 @@ export function QuizScreen() {
     }
   };
 
-  // Determine grid columns based on number of options (for multiple choice)
-  const numOptions = currentQuestion.mode === "multiple_choice" ? currentQuestion.options.length : 0;
-  const gridCols = numOptions <= 4 ? 'grid-cols-2' : numOptions <= 6 ? 'grid-cols-3' : 'grid-cols-3';
+  // Determine grid columns based on number of options (for multiple choice and letter_sounds)
+  const numOptions = (currentQuestion.mode === "multiple_choice" || currentQuestion.mode === "letter_sounds") 
+    ? currentQuestion.options.length 
+    : 0;
+  const gridCols = currentQuestion.mode === "letter_sounds" 
+    ? 'grid-cols-3' // 3x3 grid for 9 letters
+    : numOptions <= 4 ? 'grid-cols-2' : numOptions <= 6 ? 'grid-cols-3' : 'grid-cols-3';
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-blue-900 to-blue-700">
@@ -131,7 +143,7 @@ export function QuizScreen() {
           </div>
         </div>
 
-        {currentQuestion.mode === "multiple_choice" ? (
+        {currentQuestion.mode === "multiple_choice" || currentQuestion.mode === "letter_sounds" ? (
           <div className={`grid ${gridCols} gap-4`}>
             {currentQuestion.options.map((option, index) => (
               <Button
@@ -139,7 +151,8 @@ export function QuizScreen() {
                 onClick={() => handleAnswer(option)}
                 disabled={showFeedback}
                 className={`
-                  h-24 text-2xl font-bold font-mono transition-all
+                  ${currentQuestion.mode === "letter_sounds" ? "h-20 text-4xl" : "h-24 text-2xl"} 
+                  font-bold font-mono transition-all
                   ${showFeedback && selectedAnswer === option
                     ? isCorrect
                       ? "bg-green-500 hover:bg-green-500 text-white scale-110"
@@ -148,7 +161,7 @@ export function QuizScreen() {
                   }
                 `}
               >
-                {option.toLowerCase()}
+                {currentQuestion.mode === "letter_sounds" ? option : option.toLowerCase()}
               </Button>
             ))}
           </div>
@@ -184,10 +197,10 @@ export function QuizScreen() {
 
         <div className="mt-8 pt-6 border-t-4 border-yellow-400">
           <div className="text-center mb-3">
-            {currentQuestion.mode === "typing" ? (
+            {currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds" ? (
               <>
                 <p className="text-xl font-bold text-blue-900">
-                  Typing Progress: {typingQuizCorrect} / 3 correct
+                  {currentQuestion.mode === "letter_sounds" ? "Letter Learning" : "Typing"} Progress: {typingQuizCorrect} / 3 correct
                 </p>
                 <p className="text-sm text-gray-600 mt-1">
                   {3 - typingQuizCorrect > 0 
@@ -212,7 +225,7 @@ export function QuizScreen() {
             <div 
               className="h-full transition-all duration-500 bg-gradient-to-r from-green-400 to-green-600"
               style={{ 
-                width: currentQuestion.mode === "typing"
+                width: (currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds")
                   ? `${Math.min((typingQuizCorrect / 3) * 100, 100)}%`
                   : `${Math.min((lessonPoints / requiredPoints) * 100, 100)}%`
               }}

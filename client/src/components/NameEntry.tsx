@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { useTankGame } from "../lib/stores/useTankGame";
+import { useTankGame, DifficultyLevel } from "../lib/stores/useTankGame";
 
 export function NameEntry() {
   const [name, setName] = useState("");
-  const { setPlayerName, setPhase } = useTankGame();
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>("words");
+  const { setPlayerName, setDifficultyLevel, setPhase } = useTankGame();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
     if (trimmedName) {
       setPlayerName(trimmedName);
+      setDifficultyLevel(difficulty);
       setPhase("menu");
     }
   };
@@ -34,6 +36,38 @@ export function NameEntry() {
             autoFocus
             maxLength={20}
           />
+          
+          <div className="mb-6">
+            <p className="text-xl text-center mb-3 text-gray-700 font-semibold">
+              Choose your level:
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setDifficulty("letters")}
+                className={`p-4 rounded-lg border-4 font-bold text-lg transition-all ${
+                  difficulty === "letters"
+                    ? "border-green-500 bg-green-100 text-green-900 scale-105"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-green-300"
+                }`}
+              >
+                🔤 Learning Letters
+                <div className="text-sm font-normal mt-1">For age 4</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDifficulty("words")}
+                className={`p-4 rounded-lg border-4 font-bold text-lg transition-all ${
+                  difficulty === "words"
+                    ? "border-blue-500 bg-blue-100 text-blue-900 scale-105"
+                    : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                }`}
+              >
+                📚 Word Recognition
+                <div className="text-sm font-normal mt-1">For ages 5-7</div>
+              </button>
+            </div>
+          </div>
           
           <button
             type="submit"

@@ -7,7 +7,7 @@ export type GameMode = "tank" | "platformer";
 
 export type TankType = "light" | "medium" | "heavy" | "speed";
 
-export type QuizMode = "multiple_choice" | "typing";
+export type QuizMode = "multiple_choice" | "typing" | "letter_sounds";
 
 export interface BaseQuestion {
   id: string;
@@ -26,7 +26,13 @@ export interface TypingQuestion extends BaseQuestion {
   mode: "typing";
 }
 
-export type Question = MultipleChoiceQuestion | TypingQuestion;
+export interface LetterSoundsQuestion extends BaseQuestion {
+  mode: "letter_sounds";
+  options: string[];
+  letterSound: string;
+}
+
+export type Question = MultipleChoiceQuestion | TypingQuestion | LetterSoundsQuestion;
 
 export interface Enemy {
   id: string;
@@ -94,9 +100,12 @@ export interface PoopBlob {
   height: number;
 }
 
+export type DifficultyLevel = "letters" | "words";
+
 interface TankGameState {
   phase: GamePhase;
   playerName: string;
+  difficultyLevel: DifficultyLevel;
   selectedGameMode: GameMode | null;
   currentLevel: number;
   score: number;
@@ -132,7 +141,7 @@ interface TankGameState {
   
   // Shared state
   currentQuestion: Question | null;
-  currentQuizMode: "typing" | "multiple_choice" | null;
+  currentQuizMode: "typing" | "multiple_choice" | "letter_sounds" | null;
   questionsAnswered: number;
   correctAnswers: number;
   quizQuestionsAnswered: number;
@@ -144,6 +153,7 @@ interface TankGameState {
 
   setPhase: (phase: GamePhase) => void;
   setPlayerName: (name: string) => void;
+  setDifficultyLevel: (level: DifficultyLevel) => void;
   selectGameMode: (mode: GameMode) => void;
   selectTank: (tank: TankType) => void;
   answerQuestion: (answer: string) => boolean;
@@ -177,6 +187,18 @@ interface TankGameState {
   firePlatformerMissile: (x: number, y: number) => void;
   takePlatformerDamage: (amount: number) => void;
 }
+
+// Letter sounds for letter learning mode
+// Maps each letter to its primary phonetic sound
+const LETTER_SOUNDS: { [key: string]: string } = {
+  'A': 'ah', 'B': 'buh', 'C': 'kuh', 'D': 'duh', 'E': 'eh', 
+  'F': 'fuh', 'G': 'guh', 'H': 'huh', 'I': 'ih', 'J': 'juh', 
+  'K': 'kuh', 'L': 'luh', 'M': 'muh', 'N': 'nuh', 'O': 'oh', 
+  'P': 'puh', 'Q': 'kwuh', 'R': 'ruh', 'S': 'sss', 'T': 'tuh', 
+  'U': 'uh', 'V': 'vuh', 'W': 'wuh', 'X': 'ks', 'Y': 'yuh', 'Z': 'zzz'
+};
+
+const ALL_LETTERS = Object.keys(LETTER_SOUNDS);
 
 // Simple word list for typing quiz mode
 // Most common English words suitable for typing practice
@@ -285,8 +307,43 @@ export const getRequiredLessonPoints = (level: number): number => {
   return 4 + level; // Level 1 = 5, Level 2 = 6, Level 3 = 7, Level 4 = 8, Level 5 = 9
 };
 
+// Generate a letter sound question for letter learning mode
+const getLetterSoundQuestion = (): LetterSoundsQuestion => {
+  // Pick a random letter
+  const correctLetter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+  const letterSound = LETTER_SOUNDS[correctLetter];
+  
+  // Generate 8 random distractor letters (total 9 letters displayed)
+  const distractors: string[] = [];
+  while (distractors.length < 8) {
+    const randomLetter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+    if (randomLetter !== correctLetter && !distractors.includes(randomLetter)) {
+      distractors.push(randomLetter);
+    }
+  }
+  
+  // Combine and shuffle
+  const allOptions = shuffleArray([correctLetter, ...distractors]);
+  
+  return {
+    id: `q-${Date.now()}-${Math.random()}`,
+    type: "letter_sound",
+    mode: "letter_sounds",
+    question: `Click the letter that makes this sound`,
+    options: allOptions,
+    correctAnswer: correctLetter,
+    letterSound: letterSound,
+    level: 1
+  };
+};
+
 // Generate a random question for a given level
-const getQuestionForLevel = (level: number, mode?: "typing" | "multiple_choice"): Question | null => {
+const getQuestionForLevel = (level: number, mode?: "typing" | "multiple_choice" | "letter_sounds"): Question | null => {
+  // If letter_sounds mode, generate letter question
+  if (mode === "letter_sounds") {
+    return getLetterSoundQuestion();
+  }
+  
   // Use provided mode or randomly choose quiz mode (50/50 chance)
   const quizMode = mode || (Math.random() < 0.5 ? "typing" : "multiple_choice");
   
@@ -355,6 +412,7 @@ export const useTankGame = create<TankGameState>()(
   subscribeWithSelector((set, get) => ({
     phase: "name_entry",
     playerName: "",
+    difficultyLevel: "words",
     selectedGameMode: null,
     currentLevel: 1,
     score: 0,
@@ -448,11 +506,17 @@ export const useTankGame = create<TankGameState>()(
       }
       
       if (phase === "quiz") {
-        const { currentQuizMode: existingMode } = get();
+        const { currentQuizMode: existingMode, difficultyLevel } = get();
         
         // Only select new quiz mode if we don't have one (starting fresh session)
         // If we already have a mode, keep it (mid-session retry)
-        const quizMode = existingMode || (Math.random() < 0.5 ? "typing" : "multiple_choice");
+        // For "letters" difficulty, use letter_sounds mode
+        // For "words" difficulty, randomly choose between typing and multiple_choice
+        const quizMode = existingMode || (
+          difficultyLevel === "letters" 
+            ? "letter_sounds"
+            : (Math.random() < 0.5 ? "typing" : "multiple_choice")
+        );
         const isNewSession = !existingMode;
         
         const question = getQuestionForLevel(get().currentLevel, quizMode);
@@ -487,6 +551,11 @@ export const useTankGame = create<TankGameState>()(
       set({ playerName: name });
     },
 
+    setDifficultyLevel: (level) => {
+      console.log("Setting difficulty level:", level);
+      set({ difficultyLevel: level });
+    },
+
     selectGameMode: (mode) => {
       set({ selectedGameMode: mode });
       if (mode === "tank") {
@@ -514,8 +583,8 @@ export const useTankGame = create<TankGameState>()(
       console.log("Answer:", answer, "Correct:", isCorrect);
       
       // Different scoring based on quiz mode
-      if (currentQuestion.mode === "typing") {
-        // Typing mode: no penalty for wrong answers, just track correct count
+      if (currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds") {
+        // Typing and letter_sounds mode: no penalty for wrong answers, just track correct count
         const newTypingCorrect = isCorrect ? typingQuizCorrect + 1 : typingQuizCorrect;
         
         set({
@@ -526,7 +595,7 @@ export const useTankGame = create<TankGameState>()(
           typingQuizCorrect: newTypingCorrect,
         });
         
-        console.log("Typing quiz correct:", newTypingCorrect);
+        console.log(currentQuestion.mode === "letter_sounds" ? "Letter quiz correct:" : "Typing quiz correct:", newTypingCorrect);
       } else {
         // Multiple choice mode: +1 for correct, -1 for incorrect
         const newLessonPoints = isCorrect ? lessonPoints + 1 : lessonPoints - 1;
