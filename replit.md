@@ -1,7 +1,7 @@
 # Tank Reader - Educational Tank Battle Game
 
 ## Overview
-Tank Reader is an educational game combining reading comprehension challenges with tank battle gameplay, designed for children aged 5-7. Its purpose is to teach letter recognition, sounds, combinations, CVC words, sight words, and blend sounds. The game features engaging arcade-style battles across progressive levels, where players earn points, unlock achievements, and advance through increasing difficulty. The project aims to provide an interactive and fun learning experience with a personalized touch.
+Tank Reader is an educational game combining reading comprehension challenges with tank battle gameplay, designed for children aged 4-7 across two difficulty levels. "Learning Letters" mode (age 4) focuses on letter recognition with audio-based letter identification. "Word Recognition" mode (ages 5-7) teaches CVC words, sight words, and blend sounds through typing and multiple-choice quizzes. The game features engaging arcade-style battles across progressive levels, where players earn points, unlock achievements, and advance through increasing difficulty. The project aims to provide an interactive and fun learning experience with a personalized touch.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -16,12 +16,16 @@ The game features a personalized experience, welcoming players by name and displ
 *   **State Management**: Zustand is used for reactive game state, managing game phases, levels, score, player/enemy positions, questions, answers, and various stats. A separate store handles achievements with localStorage persistence.
 *   **Backend**: Express.js with TypeScript, designed for scalability with an abstract `IStorage` interface for easy database swapping (currently using in-memory storage, configured for Drizzle ORM). Routing is modular, and server-side bundling is handled by esbuild.
 *   **Game Mechanics**:
-    *   **Dual Quiz Mode**: Features both multiple-choice and typing quizzes. The mode is selected per session and persists until a level is completed or the game resets.
-    *   **Progressive Difficulty**: Enemy counts, health, and speed increase across five levels. Lesson points required to advance also increase per level (5 to 9).
+    *   **Difficulty Levels**: Two distinct learning paths - "Learning Letters" (age 4) and "Word Recognition" (ages 5-7), selected at the name entry screen and persisting across all levels.
+    *   **Three Quiz Modes**: 
+        *   Letter Sounds (for "Learning Letters"): Displays 9 letters in a 3x3 grid, speaks a letter name, and asks the player to click the matching letter. Requires 3 correct answers to advance.
+        *   Multiple-Choice (for "Word Recognition"): Shows 3-9 word options with audio playback.
+        *   Typing (for "Word Recognition"): Players type the word they hear.
+    *   **Progressive Difficulty**: Enemy counts, health, and speed increase across five levels. Lesson points required to advance also increase per level (5 to 9) for word recognition mode.
     *   **Horizontal Tank Battles**: Player on the left, enemies on the right, shooting horizontally.
-    *   **Word-Based Quiz System**: Dynamic question generation from an expanded word bank of 250 words, organized by difficulty, with randomized answer options (3-9 choices).
-    *   **Negative Scoring**: Incorrect quiz answers subtract points, reinforcing careful learning.
-    *   **Text-to-Speech**: Web Speech API integration reads quiz words aloud with optimized speed and natural pitch, personalized with player's name.
+    *   **Word-Based Quiz System**: Dynamic question generation from an expanded word bank of 250 words for word recognition, and A-Z letter pool for letter learning, with randomized answer options.
+    *   **Adaptive Scoring**: Letter mode requires 3 correct answers with no negative scoring. Word recognition uses lesson points with negative scoring for incorrect answers.
+    *   **Text-to-Speech**: Web Speech API integration reads quiz content aloud - letter names for letter mode, words for word recognition mode - with optimized speed and natural pitch, personalized with player's name.
     *   **Achievements & High Score**: A system tracks 10 learning milestones and persists high scores locally.
     *   **Power-Up System**: Health packs, rapid fire, and speed boosts randomly spawn during gameplay.
 
