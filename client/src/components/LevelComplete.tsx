@@ -22,26 +22,26 @@ export function LevelComplete() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/90">
-      <div className="bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-lg p-12 max-w-2xl w-full mx-4 border-8 border-yellow-300 text-center">
+      <div className="bg-gradient-to-b from-yellow-400 to-yellow-600 rounded-lg p-6 md:p-12 max-w-2xl w-full mx-4 border-4 md:border-8 border-yellow-300 text-center">
         <h2 
-          className="text-6xl font-bold text-black mb-6 font-mono animate-bounce"
+          className="text-3xl md:text-6xl font-bold text-black mb-6 font-mono animate-bounce"
           style={{ textShadow: "4px 4px 0px rgba(255,255,255,0.5)" }}
         >
           🎉 LEVEL {currentLevel} COMPLETE! 🎉
         </h2>
         
         <div className="bg-black/20 rounded-lg p-6 mb-8">
-          <p className="text-4xl font-bold text-white mb-4">
+          <p className="text-2xl md:text-4xl font-bold text-white mb-4">
             {playerName ? `EXCELLENT WORK, ${playerName.toUpperCase()}!` : "EXCELLENT WORK!"}
           </p>
-          <p className="text-3xl font-bold text-black">
+          <p className="text-xl md:text-3xl font-bold text-black">
             Score: {score}
           </p>
         </div>
 
         <Button
           onClick={nextLevel}
-          className="w-full h-20 text-3xl font-bold bg-green-500 hover:bg-green-600 text-white font-mono"
+          className="w-full h-16 md:h-20 text-2xl md:text-3xl font-bold bg-green-500 hover:bg-green-600 text-white font-mono min-h-[60px]"
         >
           NEXT LEVEL →
         </Button>

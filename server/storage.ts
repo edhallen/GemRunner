@@ -1,38 +1,34 @@
-import { users, type User, type InsertUser } from "@shared/schema";
-
-// modify the interface with any CRUD methods
-// you might need
+import { gameRuns, type GameRun, type InsertGameRun } from "@shared/schema";
 
 export interface IStorage {
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createGameRun(gameRun: InsertGameRun): Promise<GameRun>;
+  getLeaderboard(limit?: number): Promise<GameRun[]>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  currentId: number;
+  private gameRuns: Map<number, GameRun>;
+  currentGameRunId: number;
 
   constructor() {
-    this.users = new Map();
-    this.currentId = 1;
+    this.gameRuns = new Map();
+    this.currentGameRunId = 1;
   }
 
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+  async createGameRun(insertGameRun: InsertGameRun): Promise<GameRun> {
+    const id = this.currentGameRunId++;
+    const gameRun: GameRun = {
+      ...insertGameRun,
+      id,
+      createdAt: new Date(),
+    };
+    this.gameRuns.set(id, gameRun);
+    return gameRun;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async getLeaderboard(limit: number = 10): Promise<GameRun[]> {
+    return Array.from(this.gameRuns.values())
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
   }
 }
 

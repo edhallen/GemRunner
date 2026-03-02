@@ -1,9 +1,19 @@
 import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { useTankGame, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
-import { useKeyboardControls, useTexture } from "@react-three/drei";
+import { useTankGame, WORD_BANK, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
+import { useProfiles } from "@/lib/stores/useProfiles";
+import { useKeyboardControls, useTexture, Text } from "@react-three/drei";
 import { Controls } from "@/App";
+import {
+  TANK_BULLET_SPEED, TANK_MISSILE_SPEED, TANK_FIRE_RATE_MS,
+  TANK_RAPID_FIRE_RATE_MS, TANK_MISSILE_COOLDOWN_MS,
+  TANK_ARENA_BOUNDS, TANK_BULLET_BOUNDS,
+  TANK_BULLET_DAMAGE, TANK_MISSILE_DAMAGE, TANK_ENEMY_BULLET_DAMAGE,
+  TANK_PLAYER_HIT_RADIUS, TANK_ENEMY_HIT_RADIUS, TANK_POWERUP_RADIUS,
+  SCORE_TANK_ENEMY_KILL, SCORE_TANK_TARGET_KILL, SCORE_TANK_POWERUP,
+  MAX_EXPLOSIONS, EXPLOSION_DURATION_MS,
+} from "@/lib/constants";
 
 interface Explosion {
   id: string;
@@ -54,6 +64,10 @@ export function GameScene() {
     activePowerUps,
     missileCount,
     fireMissile,
+    tankTargetWord,
+    setTankTargetWord,
+    checkTankTargetHit,
+    difficultyLevel,
   } = useTankGame();
 
   const playerRef = useRef<THREE.Sprite>(null);
@@ -62,10 +76,23 @@ export function GameScene() {
   const [, getKeys] = useKeyboardControls<Controls>();
   const [explosions, setExplosions] = useState<Explosion[]>([]);
 
+  const targetWordSpoken = useRef(false);
+
   useEffect(() => {
     // Enemies: start at 2 and increase by 1 each level (2, 3, 4, 5, 6)
     // Enemies now spawn on the RIGHT side (positive X)
     const enemyCount = 1 + currentLevel;
+
+    // Get words for enemy labels based on difficulty
+    const profile = useProfiles.getState().getActiveProfile();
+    const effectiveLevel = profile?.wordLevel || 1;
+    const levelKey = `level${effectiveLevel}` as keyof typeof WORD_BANK;
+    const wordPool: string[] = WORD_BANK[levelKey] || WORD_BANK.level1;
+
+    // Pick unique words for each enemy
+    const shuffledWords = [...wordPool].sort(() => Math.random() - 0.5);
+    const ALL_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
     const newEnemies = Array.from({ length: enemyCount }, (_, i) => ({
       id: `enemy-${i}-${Date.now()}`,
       x: 8 + Math.random() * 2,
@@ -73,9 +100,18 @@ export function GameScene() {
       health: 40 + currentLevel * 15,
       speed: 0.7 + currentLevel * 0.3,
       lastShot: 0,
+      word: difficultyLevel === "letters"
+        ? ALL_LETTERS[i % ALL_LETTERS.length]
+        : shuffledWords[i % shuffledWords.length],
     }));
     setEnemies(newEnemies);
-    console.log("Created enemies:", newEnemies.length);
+
+    // Pick a target word from the enemies and speak it
+    const targetWord = newEnemies[Math.floor(Math.random() * newEnemies.length)].word;
+    if (targetWord) {
+      setTankTargetWord(targetWord);
+      targetWordSpoken.current = false;
+    }
 
     const powerUpTypes: PowerUpType[] = ["health", "speed", "rapid_fire"];
     const powerUpCount = Math.min(currentLevel, 3);
@@ -87,11 +123,23 @@ export function GameScene() {
       active: true,
     }));
     setPowerUps(newPowerUps);
-    console.log("Created power-ups:", newPowerUps.length);
   }, [currentLevel, setEnemies, setPowerUps]);
 
   useFrame((state, delta) => {
     if (!playerTank) return;
+
+    // Speak the target word once
+    if (tankTargetWord && !targetWordSpoken.current) {
+      targetWordSpoken.current = true;
+      try {
+        const utterance = new SpeechSynthesisUtterance(tankTargetWord);
+        utterance.rate = 0.7;
+        utterance.volume = 1;
+        speechSynthesis.speak(utterance);
+      } catch {
+        // Speech synthesis unavailable
+      }
+    }
 
     updatePowerUps();
 
@@ -104,23 +152,19 @@ export function GameScene() {
     // Flipped controls: up/down for vertical movement, left/right for horizontal
     if (keys.forward) {
       newY += speed;
-      console.log("Moving up");
     }
     if (keys.back) {
       newY -= speed;
-      console.log("Moving down");
     }
     if (keys.left) {
       newX -= speed;
-      console.log("Moving left");
     }
     if (keys.right) {
       newX += speed;
-      console.log("Moving right");
     }
 
-    newX = Math.max(-9, Math.min(9, newX));
-    newY = Math.max(-9, Math.min(9, newY));
+    newX = Math.max(-TANK_ARENA_BOUNDS, Math.min(TANK_ARENA_BOUNDS, newX));
+    newY = Math.max(-TANK_ARENA_BOUNDS, Math.min(TANK_ARENA_BOUNDS, newY));
 
     if (newX !== playerX || newY !== playerY) {
       updatePlayerPosition(newX, newY);
@@ -130,14 +174,14 @@ export function GameScene() {
     let newPlayerBullet = null;
     if (keys.shoot) {
       const now = Date.now();
-      const fireRate = activePowerUps.has("rapid_fire") ? 200 : 500;
+      const fireRate = activePowerUps.has("rapid_fire") ? TANK_RAPID_FIRE_RATE_MS : TANK_FIRE_RATE_MS;
       if (now - lastShotTime.current > fireRate) {
         lastShotTime.current = now;
         newPlayerBullet = {
           id: `bullet-${now}`,
           x: playerX + 0.5,
           y: playerY,
-          vx: 10,
+          vx: TANK_BULLET_SPEED,
           vy: 0,
           owner: "player" as const,
         };
@@ -147,21 +191,18 @@ export function GameScene() {
     // Missile firing logic - M key to fire missiles
     if (keys.missile) {
       const now = Date.now();
-      if (now - lastMissileTime.current > 1000) { // 1 second cooldown for missiles
+      if (now - lastMissileTime.current > TANK_MISSILE_COOLDOWN_MS) {
         if (fireMissile()) {
           lastMissileTime.current = now;
           newPlayerBullet = {
             id: `missile-${now}`,
             x: playerX + 0.5,
             y: playerY,
-            vx: 12,
+            vx: TANK_MISSILE_SPEED,
             vy: 0,
             owner: "player" as const,
             isMissile: true,
           };
-          console.log("Fired missile! Remaining:", missileCount - 1);
-        } else {
-          console.log("No missiles left!");
         }
       }
     }
@@ -171,9 +212,9 @@ export function GameScene() {
       const dy = powerUp.y - playerY;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      if (distance < 0.7 && powerUp.active) {
+      if (distance < TANK_POWERUP_RADIUS && powerUp.active) {
         collectPowerUp(powerUp.id, powerUp.type);
-        addScore(50);
+        addScore(SCORE_TANK_POWERUP);
       }
     });
 
@@ -183,11 +224,13 @@ export function GameScene() {
         x: b.x + b.vx * delta,
         y: b.y + b.vy * delta,
       }))
-      .filter(b => Math.abs(b.x) < 12 && Math.abs(b.y) < 12);
+      .filter(b => Math.abs(b.x) < TANK_BULLET_BOUNDS && Math.abs(b.y) < TANK_BULLET_BOUNDS);
 
     const bulletsToRemove = new Set<string>();
     const enemiesToRemove = new Set<string>();
 
+    // Two-pass collision: first collect hits, then apply removals.
+    // This avoids mutating the arrays mid-iteration.
     updatedBullets.forEach(bullet => {
       if (bullet.owner === "player") {
         enemies.forEach(enemy => {
@@ -195,13 +238,13 @@ export function GameScene() {
           const dy = bullet.y - enemy.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          if (distance < 0.8) {
+          if (distance < TANK_ENEMY_HIT_RADIUS) {
             bulletsToRemove.add(bullet.id);
-            const damage = bullet.isMissile ? 50 : 10;
+            const damage = bullet.isMissile ? TANK_MISSILE_DAMAGE : TANK_BULLET_DAMAGE;
             const newHealth = enemy.health - damage;
             
             // Create explosion effect
-            setExplosions(prev => [...prev, {
+            setExplosions(prev => [...prev.slice(-MAX_EXPLOSIONS + 1), {
               id: `explosion-${Date.now()}-${Math.random()}`,
               x: enemy.x,
               y: enemy.y,
@@ -210,8 +253,22 @@ export function GameScene() {
             
             if (newHealth <= 0) {
               enemiesToRemove.add(enemy.id);
-              addScore(100);
-              console.log("Enemy destroyed!");
+              // Bonus for hitting the target word enemy
+              const isTarget = checkTankTargetHit(enemy.id);
+              addScore(isTarget ? SCORE_TANK_TARGET_KILL : SCORE_TANK_ENEMY_KILL);
+              if (isTarget) {
+                // Pick a new target from remaining enemies
+                const remaining = enemies.filter(e => e.id !== enemy.id && !enemiesToRemove.has(e.id));
+                if (remaining.length > 0) {
+                  const next = remaining[Math.floor(Math.random() * remaining.length)];
+                  if (next.word) {
+                    setTankTargetWord(next.word);
+                    targetWordSpoken.current = false;
+                  }
+                } else {
+                  setTankTargetWord(null);
+                }
+              }
             } else {
               updateEnemy(enemy.id, { health: newHealth });
             }
@@ -222,10 +279,9 @@ export function GameScene() {
         const dy = bullet.y - playerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance < 0.6) {
+        if (distance < TANK_PLAYER_HIT_RADIUS) {
           bulletsToRemove.add(bullet.id);
-          takeDamage(10);
-          console.log("Player hit!");
+          takeDamage(TANK_ENEMY_BULLET_DAMAGE);
         }
       }
     });
@@ -243,8 +299,8 @@ export function GameScene() {
         const moveX = (dx / distance) * enemy.speed * delta * 0.3;
         const moveY = (dy / distance) * enemy.speed * delta * 0.3;
         updateEnemy(enemy.id, {
-          x: Math.max(-9, Math.min(9, enemy.x + moveX)),
-          y: Math.max(-9, Math.min(9, enemy.y + moveY)),
+          x: Math.max(-TANK_ARENA_BOUNDS, Math.min(TANK_ARENA_BOUNDS, enemy.x + moveX)),
+          y: Math.max(-TANK_ARENA_BOUNDS, Math.min(TANK_ARENA_BOUNDS, enemy.y + moveY)),
         });
       }
 
@@ -270,14 +326,13 @@ export function GameScene() {
     // Add new player bullet if one was created
     if (newPlayerBullet) {
       finalBullets.push(newPlayerBullet);
-      console.log("Added player bullet to finalBullets, total:", finalBullets.length);
     }
 
     setBullets(finalBullets);
 
-    // Remove old explosions (after 500ms)
+    // Remove old explosions
     const now = Date.now();
-    setExplosions(prev => prev.filter(exp => now - exp.startTime < 500));
+    setExplosions(prev => prev.filter(exp => now - exp.startTime < EXPLOSION_DURATION_MS));
 
     if (enemies.length === 0 && currentLevel <= 5) {
       setTimeout(() => {
@@ -306,22 +361,47 @@ export function GameScene() {
       </sprite>
 
       {/* Enemy Tanks - now use actual enemy tank image */}
-      {enemies.map(enemy => (
-        <group key={enemy.id}>
-          <sprite position={[enemy.x, enemy.y, 0]} scale={[2, 2, 1]}>
-            <spriteMaterial map={enemyTankTexture} transparent={true} />
-          </sprite>
-          {/* Health bar */}
-          <mesh position={[enemy.x, enemy.y + 1.2, 0]}>
-            <planeGeometry args={[1, 0.2]} />
-            <meshBasicMaterial color="#000000" />
-          </mesh>
-          <mesh position={[enemy.x - 0.5 + (enemy.health / (30 + currentLevel * 10)), enemy.y + 1.2, 0.01]}>
-            <planeGeometry args={[(enemy.health / (30 + currentLevel * 10)), 0.15]} />
-            <meshBasicMaterial color="#22c55e" />
-          </mesh>
-        </group>
-      ))}
+      {enemies.map(enemy => {
+        const isTarget = tankTargetWord && enemy.word?.toUpperCase() === tankTargetWord.toUpperCase();
+        return (
+          <group key={enemy.id}>
+            <sprite position={[enemy.x, enemy.y, 0]} scale={[2, 2, 1]}>
+              <spriteMaterial map={enemyTankTexture} transparent={true} />
+            </sprite>
+            {/* Word label above enemy */}
+            {enemy.word && (
+              <Text
+                position={[enemy.x, enemy.y + 1.6, 0.5]}
+                fontSize={0.5}
+                color={isTarget ? "#FFD700" : "#FFFFFF"}
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.05}
+                outlineColor="#000000"
+                fontWeight="bold"
+              >
+                {enemy.word}
+              </Text>
+            )}
+            {/* Target indicator */}
+            {isTarget && (
+              <mesh position={[enemy.x, enemy.y - 1.3, 0.1]}>
+                <planeGeometry args={[0.6, 0.3]} />
+                <meshBasicMaterial color="#FFD700" transparent opacity={0.8} />
+              </mesh>
+            )}
+            {/* Health bar */}
+            <mesh position={[enemy.x, enemy.y + 1.2, 0]}>
+              <planeGeometry args={[1, 0.2]} />
+              <meshBasicMaterial color="#000000" />
+            </mesh>
+            <mesh position={[enemy.x - 0.5 + (enemy.health / (30 + currentLevel * 10)), enemy.y + 1.2, 0.01]}>
+              <planeGeometry args={[(enemy.health / (30 + currentLevel * 10)), 0.15]} />
+              <meshBasicMaterial color="#22c55e" />
+            </mesh>
+          </group>
+        );
+      })}
 
       {bullets.map(bullet => {
         const isMissile = bullet.isMissile;

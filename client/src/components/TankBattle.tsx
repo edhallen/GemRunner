@@ -3,6 +3,7 @@ import { OrthographicCamera } from "@react-three/drei";
 import { Suspense } from "react";
 import { GameScene } from "./GameScene";
 import { GameHUD } from "./GameHUD";
+import { TouchControls } from "./TouchControls";
 
 export function TankBattle() {
   return (
@@ -27,6 +28,7 @@ export function TankBattle() {
       </Canvas>
       
       <GameHUD />
+      <TouchControls mode="tank" />
     </>
   );
 }

@@ -1,16 +1,18 @@
 import { useFrame, useLoader } from "@react-three/fiber";
-import { useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls, Text } from "@react-three/drei";
 import { useTankGame } from "@/lib/stores/useTankGame";
 import { useEffect, useRef, useState } from "react";
 import { Controls } from "@/App";
 import * as THREE from "three";
-
-const GRAVITY = -15;
-const JUMP_VELOCITY = 12;
-const MOVE_SPEED = 4;
-const GROUND_Y = -5;
-const PLAYER_SIZE = 0.5;
-const MISSILE_SPEED = 12;
+import {
+  GRAVITY, JUMP_VELOCITY, PLATFORMER_MOVE_SPEED as MOVE_SPEED,
+  GROUND_Y, PLAYER_SIZE, PLATFORMER_MISSILE_SPEED as MISSILE_SPEED,
+  GEM_COLLECT_RADIUS, ENEMY_COLLISION_RADIUS, ENEMY_STOMP_OFFSET,
+  DAMAGE_COOLDOWN_MS, POOP_DAMAGE_COOLDOWN_MS,
+  PLAYER_DAMAGE_FROM_ENEMY, PLAYER_DAMAGE_FROM_POOP,
+  PLAYER_BOUNCE_VX, PLAYER_BOUNCE_VY, POOP_BOUNCE_VY,
+  FLAG_REACH_X, EXPLOSION_DURATION_MS, MAX_EXPLOSIONS,
+} from "@/lib/constants";
 
 // Hill terrain data - [startX, endX, height]
 const HILLS = [
@@ -19,7 +21,8 @@ const HILLS = [
   { startX: 35, endX: 42, height: 1.8 },
 ];
 
-// Function to get terrain height at a given X position
+// Returns the ground height at position X, accounting for hills.
+// Hills use a cosine curve for smooth slopes; flat terrain returns GROUND_Y.
 const getTerrainHeight = (x: number): number => {
   for (const hill of HILLS) {
     if (x >= hill.startX && x <= hill.endX) {
@@ -99,6 +102,7 @@ export function SideScrollerScene() {
   const reachFlag = useTankGame(state => state.reachFlag);
   const firePlatformerMissile = useTankGame(state => state.firePlatformerMissile);
   const setPlatformerMissiles = useTankGame(state => state.setPlatformerMissiles);
+  const destroyPoopBlob = useTankGame(state => state.destroyPoopBlob);
   const takePlatformerDamage = useTankGame(state => state.takePlatformerDamage);
 
   const [, getKeys] = useKeyboardControls<Controls>();
@@ -126,12 +130,14 @@ export function SideScrollerScene() {
   const enemy1Texture = useLoader(THREE.TextureLoader, "/enemy.png");
   const enemy2Texture = useLoader(THREE.TextureLoader, "/enemy2.png");
   const enemy3Texture = useLoader(THREE.TextureLoader, "/enemy3.png");
+  const birdTexture = useLoader(THREE.TextureLoader, "/bird.png");
   const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
   const poopTexture = useLoader(THREE.TextureLoader, "/poop.png");
   const platformTileTexture = useLoader(THREE.TextureLoader, "/platform_tile.png");
   const groundTileTexture = useLoader(THREE.TextureLoader, "/ground_tile.png");
   const backgroundTexture = useLoader(THREE.TextureLoader, "/background.png");
   const rocketTexture = useLoader(THREE.TextureLoader, "/rocket.png");
+  const hillTexture = useLoader(THREE.TextureLoader, "/textures/hill_dirt.jpg");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -154,19 +160,17 @@ export function SideScrollerScene() {
     // Jumping - only trigger on key press (not held)
     if (keys.shoot && !wasJumpPressed.current && platformerIsGrounded) {
       newVY = JUMP_VELOCITY;
-      console.log("Jump triggered!");
     }
     wasJumpPressed.current = keys.shoot;
 
     // Fire missile with 'm' key - only trigger on key press (not held)
     if (keys.missile && !wasMissilePressed.current) {
-      console.log("Missile fired at position:", newX, newY);
       firePlatformerMissile(newX, newY);
       
       // Play missile firing sound
       if (missileSound.current) {
         missileSound.current.currentTime = 0;
-        missileSound.current.play().catch(err => console.log("Missile sound failed:", err));
+        missileSound.current.play().catch(() => {});
       }
     }
     wasMissilePressed.current = keys.missile;
@@ -183,11 +187,10 @@ export function SideScrollerScene() {
     newX += newVX * delta;
     newY += newVY * delta;
 
-    // Platform collision detection
+    // Platform collision: one-way platforms that only block from above.
+    // Player can jump through from below but lands when falling onto the surface.
     let grounded = false;
     let platformTop = -Infinity;
-    
-    // Check collision with platforms
     for (const platform of platformerPlatforms) {
       const platformLeft = platform.x - platform.width / 2;
       const platformRight = platform.x + platform.width / 2;
@@ -223,39 +226,99 @@ export function SideScrollerScene() {
       newVX = 0;
     }
 
-    // Update enemy positions (patrol)
+    // Update enemy positions (patrol) - skip distant enemies for collision but still move them
     platformerEnemies.forEach(enemy => {
       if (!enemy.isAlive) return;
+      const distToPlayer = Math.abs(enemy.x - newX);
 
-      let newEnemyX = enemy.x + enemy.vx * delta * 2;
-      let newVx = enemy.vx;
+      // Birds fly in arcs, other enemies patrol on ground
+      if (enemy.type === 'bird' && enemy.arcStartX !== undefined && enemy.arcEndX !== undefined && enemy.arcHeight !== undefined && enemy.arcTime !== undefined && enemy.arcSpeed !== undefined) {
+        // Bird arc movement: birds fly in parabolic arcs between two X points.
+        // arcTime progresses 0→1 along the arc; at the endpoints, start/end swap to reverse direction.
+        let newArcTime = enemy.arcTime + enemy.arcSpeed * delta;
+        
+        // Reverse direction when reaching arc bounds
+        let arcStartX = enemy.arcStartX;
+        let arcEndX = enemy.arcEndX;
+        
+        if (newArcTime >= 1) {
+          newArcTime = 1;
+          // Swap start and end to reverse direction
+          const temp = arcStartX;
+          arcStartX = arcEndX;
+          arcEndX = temp;
+          newArcTime = 0;
+        } else if (newArcTime <= 0) {
+          newArcTime = 0;
+          // Swap start and end to reverse direction
+          const temp = arcStartX;
+          arcStartX = arcEndX;
+          arcEndX = temp;
+          newArcTime = 1;
+        }
+        
+        // Calculate position along arc using parabolic curve
+        const arcWidth = Math.abs(arcEndX - arcStartX);
+        const normalizedTime = newArcTime; // 0 to 1
+        const newEnemyX = arcStartX + (arcEndX - arcStartX) * normalizedTime;
+        
+        // sin(t*PI) gives a smooth arc: 0 at edges, 1 at center (t=0.5)
+        const arcProgress = Math.sin(normalizedTime * Math.PI);
+        const newEnemyY = -2 + enemy.arcHeight * arcProgress; // Fly above ground
+        
+        // Calculate velocity for smooth movement
+        const dx = (arcEndX - arcStartX) * enemy.arcSpeed;
+        const newVx = dx;
+        const dy = enemy.arcHeight * Math.PI * Math.cos(normalizedTime * Math.PI) * enemy.arcSpeed;
+        const newVy = dy;
+        
+        updatePlatformerEnemy(enemy.id, { 
+          x: newEnemyX, 
+          y: newEnemyY,
+          vx: newVx,
+          vy: newVy,
+          arcTime: newArcTime,
+          arcStartX: arcStartX,
+          arcEndX: arcEndX,
+        });
+      } else {
+        // Ground enemy patrol movement
+        let newEnemyX = enemy.x + enemy.vx * delta * 2;
+        let newVx = enemy.vx;
 
-      // Reverse at patrol bounds
-      if (newEnemyX <= enemy.patrolLeft || newEnemyX >= enemy.patrolRight) {
-        newVx = -newVx;
-        newEnemyX = Math.max(enemy.patrolLeft, Math.min(enemy.patrolRight, newEnemyX));
+        // Reverse at patrol bounds
+        if (newEnemyX <= enemy.patrolLeft || newEnemyX >= enemy.patrolRight) {
+          newVx = -newVx;
+          newEnemyX = Math.max(enemy.patrolLeft, Math.min(enemy.patrolRight, newEnemyX));
+        }
+
+        // Enemies follow terrain (walk on hills)
+        const enemyTerrainHeight = getTerrainHeight(newEnemyX);
+        const newEnemyY = enemyTerrainHeight + 0.5;
+
+        // Update enemy position in store
+        updatePlatformerEnemy(enemy.id, { x: newEnemyX, vx: newVx, y: newEnemyY });
       }
+      
+      // Skip player collision for enemies far off-screen
+      if (distToPlayer > 15) return;
 
-      // Enemies follow terrain (walk on hills)
-      const enemyTerrainHeight = getTerrainHeight(newEnemyX);
-      const newEnemyY = enemyTerrainHeight + 0.5;
-
-      // Update enemy position in store
-      updatePlatformerEnemy(enemy.id, { x: newEnemyX, vx: newVx, y: newEnemyY });
-
-      // Check collision with player
-      const dx = newX - newEnemyX;
-      const dy = newY - newEnemyY;
+      // Check collision with player (for all enemy types)
+      const currentEnemyX = enemy.x;
+      const currentEnemyY = enemy.y;
+      const dx = newX - currentEnemyX;
+      const dy = newY - currentEnemyY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      const minDistance = 0.8; // Minimum allowed distance between sprites
+      const minDistance = ENEMY_COLLISION_RADIUS;
 
       if (distance < minDistance && enemy.isAlive) {
-        // Check if player is jumping on enemy (player above enemy and moving down)
-        if (newY > newEnemyY + 0.2 && newVY < 0) {
-          // Defeat enemy!
+        // For ground enemies, check if player can jump on them
+        if (enemy.type !== 'bird' && newY > currentEnemyY + ENEMY_STOMP_OFFSET && newVY < 0) {
+          // Defeat ground enemy by jumping on it!
           defeatPlatformerEnemy(enemy.id);
         } else {
-          // Calculate overlap and push sprites apart
+          // Soft collision: push player and enemy apart proportionally to their overlap.
+          // This prevents sprites from overlapping while allowing smooth movement.
           const overlap = minDistance - distance;
           const pushX = (dx / distance) * overlap * 0.5;
           const pushY = (dy / distance) * overlap * 0.5;
@@ -264,49 +327,51 @@ export function SideScrollerScene() {
           newX += pushX;
           newY += pushY;
           
-          // Push enemy away from player (prevent overlap)
-          updatePlatformerEnemy(enemy.id, { 
-            x: newEnemyX - pushX,
-            y: newEnemyY - pushY 
-          });
+          // Push enemy away from player (prevent overlap) - only for ground enemies
+          if (enemy.type !== 'bird') {
+            updatePlatformerEnemy(enemy.id, { 
+              x: currentEnemyX - pushX,
+              y: currentEnemyY - pushY 
+            });
+          }
           
           // Enemy deals damage (with cooldown to prevent rapid damage)
           const now = Date.now();
-          if (now - lastDamageTime.current > 1000) {
-            takePlatformerDamage(10);
+          if (now - lastDamageTime.current > DAMAGE_COOLDOWN_MS) {
+            takePlatformerDamage(PLAYER_DAMAGE_FROM_ENEMY);
             lastDamageTime.current = now;
-            console.log("Player took damage from enemy!");
-            
             // Play hit sound effect
             if (hitSound.current) {
               hitSound.current.currentTime = 0;
-              hitSound.current.play().catch(err => console.log("Audio play failed:", err));
+              hitSound.current.play().catch(() => {});
             }
             
             // Apply bounce velocity to player
-            const bounceDirection = newX > newEnemyX ? 1 : -1;
-            newVX = bounceDirection * 8; // Push player back
-            newVY = 6; // Give slight upward velocity for bounce effect
+            const bounceDirection = newX > currentEnemyX ? 1 : -1;
+            newVX = bounceDirection * PLAYER_BOUNCE_VX;
+            newVY = PLAYER_BOUNCE_VY;
           }
         }
       }
     });
 
-    // Check gem collection
+    // Check gem collection (skip distant gems)
     platformerGems.forEach(gem => {
       if (gem.collected) return;
+      if (Math.abs(gem.x - newX) > 5) return;
 
       const dx = newX - gem.x;
       const dy = newY - gem.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 0.6) {
+      if (distance < GEM_COLLECT_RADIUS) {
         collectGem(gem.id);
       }
     });
 
-    // Check poop blob collision (player must jump over them)
+    // Check poop blob collision (skip distant blobs)
     platformerPoopBlobs.forEach(blob => {
+      if (Math.abs(blob.x - newX) > 5) return;
       const blobLeft = blob.x - blob.width / 2;
       const blobRight = blob.x + blob.width / 2;
       const blobTop = blob.y + blob.height / 2;
@@ -321,27 +386,24 @@ export function SideScrollerScene() {
         if (playerBottomY <= clearanceHeight) {
           // Player hit the poop blob! Apply damage with cooldown
           const now = Date.now();
-          if (now - lastDamageTime.current > 800) {
-            takePlatformerDamage(5);
+          if (now - lastDamageTime.current > POOP_DAMAGE_COOLDOWN_MS) {
+            takePlatformerDamage(PLAYER_DAMAGE_FROM_POOP);
             lastDamageTime.current = now;
-            console.log("Player hit poop blob!");
-            
             // Play hit sound effect
             if (hitSound.current) {
               hitSound.current.currentTime = 0;
-              hitSound.current.play().catch(err => console.log("Audio play failed:", err));
+              hitSound.current.play().catch(() => {});
             }
             
             // Apply knockback
-            newVY = 6; // Push player up
+            newVY = POOP_BOUNCE_VY;
           }
         }
       }
     });
 
     // Check if reached flag (flag is at x = 240)
-    if (newX >= 239.5 && !platformerReachedFlag) {
-      console.log("Player reached the flag!");
+    if (newX >= FLAG_REACH_X && !platformerReachedFlag) {
       reachFlag();
     }
 
@@ -360,19 +422,19 @@ export function SideScrollerScene() {
           // Remove missiles that are off-screen (past the level end)
           if (missile.x > 250) return false;
 
-          // Check collision with enemies
+          // Check collision with enemies (skip distant ones)
           for (const enemy of platformerEnemies) {
             if (!enemy.isAlive) continue;
+            if (Math.abs(missile.x - enemy.x) > 3) continue;
 
             const dx = missile.x - enemy.x;
             const dy = missile.y - enemy.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < 0.8) {
-              console.log("Missile hit enemy! Creating explosion at:", enemy.x, enemy.y);
-              
               // Create explosion effect
-              setExplosions((prev: Explosion[]) => [...prev, {
+              setExplosions((prev: Explosion[]) => [
+                ...prev.slice(-MAX_EXPLOSIONS + 1), {
                 id: `explosion-${Date.now()}-${Math.random()}`,
                 x: enemy.x,
                 y: enemy.y,
@@ -381,9 +443,36 @@ export function SideScrollerScene() {
               
               // Damage enemy instead of instant defeat (1 damage per missile hit)
               damagePlatformerEnemy(enemy.id, 1);
-              console.log(`Enemy ${enemy.id} damaged! Health: ${enemy.health - 1}/${enemy.maxHealth}`);
-              
+
               return false; // Remove missile after hit
+            }
+          }
+
+          // Check collision with poop blobs (allow clearing obstacles)
+          for (const blob of platformerPoopBlobs) {
+            const blobLeft = blob.x - blob.width / 2;
+            const blobRight = blob.x + blob.width / 2;
+            const blobTop = blob.y + blob.height;
+            const blobBottom = blob.y;
+
+            if (
+              missile.x >= blobLeft &&
+              missile.x <= blobRight &&
+              missile.y >= blobBottom &&
+              missile.y <= blobTop
+            ) {
+              setExplosions((prev: Explosion[]) => [
+                ...prev.slice(-MAX_EXPLOSIONS + 1),
+                {
+                  id: `explosion-${Date.now()}-${Math.random()}`,
+                  x: blob.x,
+                  y: blob.y + blob.height / 2,
+                  time: Date.now(),
+                },
+              ]);
+
+              destroyPoopBlob(blob.id);
+              return false;
             }
           }
 
@@ -395,7 +484,7 @@ export function SideScrollerScene() {
     setExplosions((prev: Explosion[]) => {
       if (prev.length === 0) return prev;
       const now = Date.now();
-      const filtered = prev.filter((explosion: Explosion) => now - explosion.time < 500);
+      const filtered = prev.filter((explosion: Explosion) => now - explosion.time < EXPLOSION_DURATION_MS);
       return filtered.length === prev.length ? prev : filtered;
     });
   });
@@ -433,7 +522,7 @@ export function SideScrollerScene() {
               return (
                 <mesh key={i} position={[x, GROUND_Y + actualHeight / 2, -0.1]}>
                   <boxGeometry args={[segmentWidth * 1.1, actualHeight, 1]} />
-                  <meshBasicMaterial color="#6B8E23" />
+                  <meshBasicMaterial map={hillTexture} />
                 </mesh>
               );
             })}
@@ -480,9 +569,25 @@ export function SideScrollerScene() {
       {platformerGems.map(gem => {
         if (gem.collected) return null;
         return (
-          <sprite key={gem.id} position={[gem.x, gem.y, 0]} scale={[0.6, 0.6, 1]}>
-            <spriteMaterial map={gemTexture} transparent={true} />
-          </sprite>
+          <group key={gem.id}>
+            <sprite position={[gem.x, gem.y, 0]} scale={gem.letter ? [0.7, 0.7, 1] : [0.6, 0.6, 1]}>
+              <spriteMaterial map={gemTexture} transparent={true} />
+            </sprite>
+            {gem.letter && (
+              <Text
+                position={[gem.x, gem.y + 0.5, 0.5]}
+                fontSize={0.35}
+                color="#FFD700"
+                anchorX="center"
+                anchorY="middle"
+                outlineWidth={0.04}
+                outlineColor="#000000"
+                fontWeight="bold"
+              >
+                {gem.letter}
+              </Text>
+            )}
+          </group>
         );
       })}
 
@@ -496,12 +601,21 @@ export function SideScrollerScene() {
           texture = enemy1Texture;
         } else if (enemy.type === 'enemy2') {
           texture = enemy2Texture;
-        } else {
+        } else if (enemy.type === 'enemy3') {
           texture = enemy3Texture;
+        } else if (enemy.type === 'bird') {
+          // Use enemy3 texture as placeholder for bird (can be replaced with bird.png later)
+          texture = birdTexture;
+        } else {
+          texture = enemy1Texture;
         }
         
         return (
-          <sprite key={enemy.id} position={[enemy.x, enemy.y, 0]} scale={[0.8, 0.8, 1]}>
+          <sprite
+            key={enemy.id}
+            position={[enemy.x, enemy.y, 0]}
+            scale={enemy.type === 'bird' ? [0.7, 0.7, 1] as [number, number, number] : [0.8, 0.8, 1] as [number, number, number]}
+          >
             <spriteMaterial map={texture} transparent={true} />
           </sprite>
         );

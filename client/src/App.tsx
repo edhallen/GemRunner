@@ -1,7 +1,6 @@
 import { KeyboardControls } from "@react-three/drei";
 import { useTankGame } from "./lib/stores/useTankGame";
-import { NameEntry } from "./components/NameEntry";
-import { MenuScreen } from "./components/MenuScreen";
+import { StartScreen } from "./components/StartScreen";
 import { QuizScreen } from "./components/QuizScreen";
 import { GameModeSelection } from "./components/GameModeSelection";
 import { TankSelection } from "./components/TankSelection";
@@ -9,6 +8,7 @@ import { TankBattle } from "./components/TankBattle";
 import { SideScroller } from "./components/SideScroller";
 import { LevelComplete } from "./components/LevelComplete";
 import { GameOver } from "./components/GameOver";
+import { Leaderboard } from "./components/Leaderboard";
 import { SoundManager } from "./components/SoundManager";
 import "@fontsource/inter";
 
@@ -36,8 +36,7 @@ function App() {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <KeyboardControls map={controls}>
-        {phase === 'name_entry' && <NameEntry />}
-        {phase === 'menu' && <MenuScreen />}
+        {phase === 'menu' && <StartScreen />}
         {phase === 'quiz' && <QuizScreen />}
         {phase === 'game_mode_selection' && <GameModeSelection />}
         {phase === 'tank_selection' && <TankSelection />}
@@ -45,6 +44,7 @@ function App() {
         {phase === 'playing_platformer' && <SideScroller />}
         {phase === 'level_complete' && <LevelComplete />}
         {phase === 'game_over' && <GameOver />}
+        {phase === 'leaderboard' && <Leaderboard />}
         
         <SoundManager />
       </KeyboardControls>

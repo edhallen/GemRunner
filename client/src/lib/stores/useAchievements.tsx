@@ -79,8 +79,6 @@ export const useAchievements = create<AchievementsState>()(
         );
         
         saveAchievements(updated);
-        console.log("🏆 Achievement unlocked:", achievement.title);
-        
         return { achievements: updated };
       });
     },

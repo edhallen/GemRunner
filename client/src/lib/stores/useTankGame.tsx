@@ -1,7 +1,14 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
+import { useProfiles } from "./useProfiles";
+import {
+  LESSON_POINTS_BASE, SCORE_GEM, SCORE_LETTER_GEM_BONUS,
+  SCORE_SPELLING_LETTER, SCORE_SPELLING_COMPLETE,
+  SCORE_DEFEAT_PLATFORMER_ENEMY, MAX_PLATFORMER_MISSILES,
+  SPEECH_RATE_SLOW, SPEECH_RATE_NORMAL,
+} from "@/lib/constants";
 
-export type GamePhase = "name_entry" | "menu" | "quiz" | "game_mode_selection" | "tank_selection" | "playing_tank" | "playing_platformer" | "level_complete" | "game_over";
+export type GamePhase = "menu" | "quiz" | "game_mode_selection" | "tank_selection" | "playing_tank" | "playing_platformer" | "level_complete" | "game_over" | "leaderboard";
 
 export type GameMode = "tank" | "platformer";
 
@@ -41,6 +48,7 @@ export interface Enemy {
   health: number;
   speed: number;
   lastShot: number;
+  word?: string; // Sight word label for learning integration
 }
 
 export interface Bullet {
@@ -72,9 +80,16 @@ export interface PlatformerEnemy {
   patrolLeft: number;
   patrolRight: number;
   isAlive: boolean;
-  type: 'enemy1' | 'enemy2' | 'enemy3';
+  type: 'enemy1' | 'enemy2' | 'enemy3' | 'bird';
   health: number;
   maxHealth: number;
+  // Bird-specific properties for arc movement
+  arcStartX?: number;
+  arcEndX?: number;
+  arcHeight?: number;
+  arcTime?: number; // Current time in arc (0 to 1)
+  arcSpeed?: number; // Speed of arc traversal
+  vy?: number; // Vertical velocity for birds
 }
 
 export interface Gem {
@@ -82,6 +97,7 @@ export interface Gem {
   x: number;
   y: number;
   collected: boolean;
+  letter?: string; // Letter or word shown on the gem (for learning integration)
 }
 
 export interface Platform {
@@ -139,6 +155,14 @@ interface TankGameState {
   platformerMissiles: Bullet[];
   platformerReachedFlag: boolean;
   
+  // Tank word-target state
+  tankTargetWord: string | null; // The word the player must shoot
+  tankTargetSpoken: boolean; // Whether the target has been spoken aloud
+
+  // Platformer spelling challenge state
+  spellingTargetWord: string | null; // Target word to spell by collecting letters in order
+  spellingCollected: string[]; // Letters collected so far
+
   // Shared state
   currentQuestion: Question | null;
   currentQuizMode: "typing" | "multiple_choice" | "letter_sounds" | null;
@@ -185,7 +209,14 @@ interface TankGameState {
   initializePlatformerLevel: () => void;
   setPlatformerMissiles: (missiles: Bullet[]) => void;
   firePlatformerMissile: (x: number, y: number) => void;
+  destroyPoopBlob: (id: string) => void;
   takePlatformerDamage: (amount: number) => void;
+
+  // Learning integration methods
+  setTankTargetWord: (word: string | null) => void;
+  checkTankTargetHit: (enemyId: string) => boolean; // Returns true if this enemy had the target word
+  setSpellingTarget: (word: string | null) => void;
+  collectSpellingLetter: (letter: string) => boolean; // Returns true if letter was next in sequence
 }
 
 // Letter sounds for letter learning mode
@@ -208,9 +239,9 @@ const TYPING_WORDS = [
   "your", "game", "from", "are", "name", "lego", "go", "to", "star", "wars"
 ];
 
-// Comprehensive word bank with 200+ words organized by difficulty
+// Comprehensive word bank with 200+ words organized by difficulty (exported for use in game scenes)
 // Includes high-frequency English words and Star Wars vocabulary
-const WORD_BANK = {
+export const WORD_BANK = {
   level1: [
     // Basic sight words and simple 2-3 letter words
     "IT", "IS", "THE", "CAT", "DOG", "BIG", "RUN", "SIT", "CUP", "PAN", 
@@ -304,23 +335,31 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 // Get required lesson points for a given level
 export const getRequiredLessonPoints = (level: number): number => {
-  return 4 + level; // Level 1 = 5, Level 2 = 6, Level 3 = 7, Level 4 = 8, Level 5 = 9
+  return LESSON_POINTS_BASE + level;
 };
 
 // Generate a letter sound question for letter learning mode
 const getLetterSoundQuestion = (): LetterSoundsQuestion => {
-  // Pick 9 unique letters (no duplicates even if one is upper and one is lower)
-  const selectedLetterIndices: number[] = [];
+  // Try to pick the correct answer from weak letters (adaptive)
+  const weakLetters = useProfiles.getState().getWeakLetters(5);
+  let correctLetter: string;
+  if (weakLetters.length > 0 && Math.random() < 0.7) {
+    // 70% chance to use a weak letter as the correct answer
+    correctLetter = weakLetters[Math.floor(Math.random() * weakLetters.length)];
+  } else {
+    correctLetter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+  }
+  const correctLetterIndex = ALL_LETTERS.indexOf(correctLetter);
+
+  // Pick 8 more unique letters for distractors
+  const selectedLetterIndices: number[] = [correctLetterIndex];
   while (selectedLetterIndices.length < 9) {
     const randomIndex = Math.floor(Math.random() * ALL_LETTERS.length);
     if (!selectedLetterIndices.includes(randomIndex)) {
       selectedLetterIndices.push(randomIndex);
     }
   }
-  
-  // Pick the correct letter from the selected ones
-  const correctIndex = Math.floor(Math.random() * selectedLetterIndices.length);
-  const correctLetter = ALL_LETTERS[selectedLetterIndices[correctIndex]];
+
   const letterSound = LETTER_SOUNDS[correctLetter];
   
   // Create mix of upper and lower case letters from selected indices
@@ -377,16 +416,31 @@ const getQuestionForLevel = (level: number, mode?: "typing" | "multiple_choice" 
     };
   } else {
     // Generate multiple choice question from level word bank
-    const levelKey = `level${level}` as keyof typeof WORD_BANK;
+    // Use profile's word level if available, otherwise use game level
+    const profileState = useProfiles.getState();
+    const profile = profileState.getActiveProfile();
+    const effectiveLevel = profile?.difficultyLevel === "words" ? profile.wordLevel : level;
+    const levelKey = `level${effectiveLevel}` as keyof typeof WORD_BANK;
     const words = WORD_BANK[levelKey];
-    
+
     if (!words || words.length === 0) return null;
-    
-    // Pick a random word from the level
-    const correctWord = words[Math.floor(Math.random() * words.length)];
-    
-    // Random number of options between 3 and 9
-    const numOptions = Math.floor(Math.random() * 7) + 3; // 3-9 inclusive
+
+    // Try to pick from weak words, otherwise random
+    const weakWords = profileState.getWeakWords(5);
+    let correctWord: string;
+    if (weakWords.length > 0 && Math.random() < 0.6) {
+      // 60% chance to focus on weak words
+      const weakInLevel = weakWords.filter(w => words.includes(w));
+      correctWord = weakInLevel.length > 0
+        ? weakInLevel[Math.floor(Math.random() * weakInLevel.length)]
+        : words[Math.floor(Math.random() * words.length)];
+    } else {
+      correctWord = words[Math.floor(Math.random() * words.length)];
+    }
+
+    // Fewer options for younger/newer players, more as they improve
+    const baseOptions = profile && profile.totalAnswered < 10 ? 3 : 4;
+    const numOptions = Math.min(9, Math.max(3, baseOptions + Math.floor(effectiveLevel / 2)));
     const numDistractors = numOptions - 1; // Subtract 1 for the correct answer
     
     // Generate random number of distractor words
@@ -426,7 +480,7 @@ const saveHighScore = (score: number) => {
 
 export const useTankGame = create<TankGameState>()(
   subscribeWithSelector((set, get) => ({
-    phase: "name_entry",
+    phase: "menu",
     playerName: "",
     difficultyLevel: "words",
     selectedGameMode: null,
@@ -462,6 +516,14 @@ export const useTankGame = create<TankGameState>()(
     platformerMissiles: [],
     platformerReachedFlag: false,
     
+    // Tank word-target state
+    tankTargetWord: null,
+    tankTargetSpoken: false,
+
+    // Platformer spelling challenge state
+    spellingTargetWord: null,
+    spellingCollected: [],
+
     // Shared state
     currentQuestion: null,
     currentQuizMode: null,
@@ -475,14 +537,12 @@ export const useTankGame = create<TankGameState>()(
     lessonPoints: 0,
 
     setPhase: (phase) => {
-      console.log("Setting phase to:", phase);
       const { lessonPoints, typingQuizCorrect, currentLevel, currentQuizMode } = get();
       const requiredPoints = getRequiredLessonPoints(currentLevel);
       
       // Clear quiz session state when transitioning to phases that represent session breaks
       if (phase === "menu" || phase === "level_complete" || phase === "game_over") {
-        console.log("Ending quiz session, clearing quiz mode and progress");
-        set({ 
+        set({
           phase,
           currentQuizMode: null,
           typingQuizCorrect: 0,
@@ -491,20 +551,15 @@ export const useTankGame = create<TankGameState>()(
       }
       
       // Gate game mode selection and playing behind quiz completion requirements
-      if (phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank" || phase === "playing_platformer") {
+      // BUT allow direct access to playing_platformer (for TEST button)
+      if (phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank") {
         let canAdvance = false;
         
         // Check requirements based on current quiz mode
         if (currentQuizMode === "typing" || currentQuizMode === "letter_sounds") {
           canAdvance = typingQuizCorrect >= 3;
-          if (!canAdvance) {
-            console.log(`Need 3 ${currentQuizMode === "letter_sounds" ? "letter" : "typing"} quiz correct! Current:`, typingQuizCorrect);
-          }
         } else {
           canAdvance = lessonPoints >= requiredPoints;
-          if (!canAdvance) {
-            console.log(`Need ${requiredPoints} lesson points to play! Current:`, lessonPoints);
-          }
         }
         
         if (!canAdvance) {
@@ -538,8 +593,7 @@ export const useTankGame = create<TankGameState>()(
         const question = getQuestionForLevel(get().currentLevel, quizMode);
         
         if (isNewSession) {
-          console.log("Starting new quiz session with mode:", quizMode);
-          set({ 
+          set({
             phase, 
             currentQuestion: question,
             currentQuizMode: quizMode,
@@ -548,8 +602,7 @@ export const useTankGame = create<TankGameState>()(
             typingQuizCorrect: 0, // Reset counters for new session
           });
         } else {
-          console.log("Continuing quiz session with mode:", quizMode);
-          set({ 
+          set({
             phase, 
             currentQuestion: question,
             // Don't reset currentQuizMode or typingQuizCorrect for mid-session retry
@@ -563,12 +616,10 @@ export const useTankGame = create<TankGameState>()(
     },
 
     setPlayerName: (name) => {
-      console.log("Setting player name:", name);
       set({ playerName: name });
     },
 
     setDifficultyLevel: (level) => {
-      console.log("Setting difficulty level:", level);
       set({ difficultyLevel: level });
     },
 
@@ -584,7 +635,6 @@ export const useTankGame = create<TankGameState>()(
     },
 
     selectTank: (tank) => {
-      console.log("Selected tank:", tank);
       set({ playerTank: tank });
     },
 
@@ -596,8 +646,20 @@ export const useTankGame = create<TankGameState>()(
       const normalizedAnswer = answer.trim().toLowerCase();
       const normalizedCorrect = currentQuestion.correctAnswer.trim().toLowerCase();
       const isCorrect = normalizedAnswer === normalizedCorrect;
-      console.log("Answer:", answer, "Correct:", isCorrect);
-      
+
+      // Track accuracy in profile
+      const profileStore = useProfiles.getState();
+      if (currentQuestion.mode === "letter_sounds") {
+        profileStore.updateAccuracy(currentQuestion.correctAnswer, "letter", isCorrect);
+      } else {
+        profileStore.updateAccuracy(currentQuestion.correctAnswer, "word", isCorrect);
+      }
+
+      // Check if word level should advance
+      if (profileStore.shouldAdvanceWordLevel()) {
+        profileStore.advanceWordLevel();
+      }
+
       // Different scoring based on quiz mode
       if (currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds") {
         // Typing and letter_sounds mode: no penalty for wrong answers, just track correct count
@@ -610,11 +672,9 @@ export const useTankGame = create<TankGameState>()(
           quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
           typingQuizCorrect: newTypingCorrect,
         });
-        
-        console.log(currentQuestion.mode === "letter_sounds" ? "Letter quiz correct:" : "Typing quiz correct:", newTypingCorrect);
       } else {
         // Multiple choice mode: +1 for correct, -1 for incorrect
-        const newLessonPoints = isCorrect ? lessonPoints + 1 : lessonPoints - 1;
+        const newLessonPoints = isCorrect ? lessonPoints + 1 : Math.max(0, lessonPoints - 1);
         
         set({
           questionsAnswered: questionsAnswered + 1,
@@ -623,18 +683,15 @@ export const useTankGame = create<TankGameState>()(
           quizCorrectAnswers: isCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers,
           lessonPoints: newLessonPoints,
         });
-        
-        console.log("Lesson points:", newLessonPoints);
       }
-      
+
       return isCorrect;
     },
 
     nextLevel: () => {
       const { currentLevel, difficultyLevel } = get();
       const newLevel = currentLevel + 1;
-      console.log("Advancing to level:", newLevel);
-      
+
       if (newLevel > 5) {
         set({ currentLevel: newLevel, phase: "game_over" });
       } else {
@@ -644,8 +701,7 @@ export const useTankGame = create<TankGameState>()(
         const newQuizMode = difficultyLevel === "letters"
           ? "letter_sounds"
           : (Math.random() < 0.5 ? "typing" : "multiple_choice");
-        console.log("Starting level", newLevel, "with quiz mode:", newQuizMode);
-        
+
         set({
           currentLevel: newLevel,
           phase: "quiz",
@@ -679,11 +735,8 @@ export const useTankGame = create<TankGameState>()(
     },
 
     resetGame: () => {
-      console.log("Resetting game");
-      const { playerName } = get();
       set({
-        phase: "name_entry",
-        playerName: "", // Clear name on full reset
+        phase: "menu",
         selectedGameMode: null,
         currentLevel: 1,
         score: 0,
@@ -709,6 +762,10 @@ export const useTankGame = create<TankGameState>()(
         platformerPoopBlobs: [],
         platformerMissiles: [],
         platformerReachedFlag: false,
+        tankTargetWord: null,
+        tankTargetSpoken: false,
+        spellingTargetWord: null,
+        spellingCollected: [],
         enemiesDefeated: 0,
         powerUpsCollected: 0,
         currentQuestion: null,
@@ -795,8 +852,6 @@ export const useTankGame = create<TankGameState>()(
       if (type === "health") {
         set({ playerHealth: Math.min(playerHealth + 30, maxHealth) });
       }
-      
-      console.log("Collected power-up:", type);
     },
 
     updatePowerUps: () => {
@@ -812,7 +867,6 @@ export const useTankGame = create<TankGameState>()(
           newActive.delete(type);
           newEndTimes.delete(type);
           changed = true;
-          console.log("Power-up expired:", type);
         }
       });
       
@@ -879,16 +933,61 @@ export const useTankGame = create<TankGameState>()(
         ),
         enemiesDefeated: state.enemiesDefeated + 1,
       }));
-      get().addScore(50);
+      get().addScore(SCORE_DEFEAT_PLATFORMER_ENEMY);
     },
 
     collectGem: (id) => {
+      const gem = get().platformerGems.find(g => g.id === id);
+      if (!gem || gem.collected) return;
+
       set((state) => ({
-        platformerGems: state.platformerGems.map(g => 
+        platformerGems: state.platformerGems.map(g =>
           g.id === id ? { ...g, collected: true } : g
         ),
       }));
-      get().addScore(10);
+
+      let bonusPoints = 0;
+
+      // Speak the letter/word aloud when collected
+      if (gem.letter) {
+        try {
+          const utterance = new SpeechSynthesisUtterance(gem.letter);
+          utterance.rate = SPEECH_RATE_NORMAL;
+          utterance.volume = 1;
+          speechSynthesis.speak(utterance);
+        } catch {
+          // Speech synthesis unavailable
+        }
+
+        // Check spelling challenge
+        const { spellingTargetWord, spellingCollected } = get();
+        if (spellingTargetWord) {
+          const nextLetter = spellingTargetWord[spellingCollected.length];
+          if (gem.letter === nextLetter) {
+            const newCollected = [...spellingCollected, gem.letter];
+            set({ spellingCollected: newCollected });
+            bonusPoints = SCORE_SPELLING_LETTER;
+
+            // Completed the word!
+            if (newCollected.length === spellingTargetWord.length) {
+              bonusPoints = SCORE_SPELLING_COMPLETE;
+              // Speak the completed word
+              try {
+                const wordUtterance = new SpeechSynthesisUtterance(spellingTargetWord);
+                wordUtterance.rate = SPEECH_RATE_SLOW;
+                wordUtterance.volume = 1;
+                setTimeout(() => speechSynthesis.speak(wordUtterance), 500);
+              } catch {
+                // Speech synthesis unavailable
+              }
+            }
+          }
+        }
+
+        bonusPoints += SCORE_LETTER_GEM_BONUS;
+      }
+
+      get().addScore(SCORE_GEM + bonusPoints);
     },
 
     reachFlag: () => {
@@ -917,13 +1016,13 @@ export const useTankGame = create<TankGameState>()(
       // Positioned at least 1 character height above highest mountain (y >= -1.5)
       // 36 platforms spread across the 240-unit level
       const platforms: Platform[] = [
-        { id: 'plat-1', x: 10, y: -1.3, width: 4, height: 0.5 },
-        { id: 'plat-2', x: 16, y: -1.5, width: 3, height: 0.5 },
+        { id: 'plat-1', x: 10, y: -0.9, width: 4, height: 0.5 },
+        { id: 'plat-2', x: 16, y: -0.9, width: 3, height: 0.5 },
         { id: 'plat-3', x: 22, y: -0.9, width: 4, height: 0.5 },
-        { id: 'plat-4', x: 28, y: -1.2, width: 3, height: 0.5 },
-        { id: 'plat-5', x: 34, y: -1.5, width: 4, height: 0.5 },
+        { id: 'plat-4', x: 28, y: -0.9, width: 3, height: 0.5 },
+        { id: 'plat-5', x: 34, y: -0.0, width: 4, height: 0.5 },
         { id: 'plat-6', x: 40, y: -1.0, width: 3, height: 0.5 },
-        { id: 'plat-7', x: 46, y: -1.4, width: 4, height: 0.5 },
+        { id: 'plat-7', x: 46, y: -0.8, width: 4, height: 0.5 },
         { id: 'plat-8', x: 52, y: -1.5, width: 3, height: 0.5 },
         { id: 'plat-9', x: 58, y: -1.1, width: 4, height: 0.5 },
         { id: 'plat-10', x: 64, y: -1.3, width: 3, height: 0.5 },
@@ -955,41 +1054,92 @@ export const useTankGame = create<TankGameState>()(
         { id: 'plat-36', x: 220, y: -1.3, width: 3, height: 0.5 },
       ];
 
+      // Lower all platforms significantly so player is fully visible when on them
+      const adjustedPlatforms: Platform[] = platforms.map((platform) => ({
+        ...platform,
+        y: platform.y - 2.5, // Lower by 2.5 units total (was -1, now -2.5)
+      }));
+
+      // Determine difficulty and pick letters/words for labeled gems
+      const { difficultyLevel } = get();
+      const profileState = useProfiles.getState();
+      const profile = profileState.getActiveProfile();
+
+      // Pick a spelling target word for word mode
+      let spellingWord: string | null = null;
+      if (difficultyLevel === "words" && profile) {
+        const effectiveLevel = profile.wordLevel || 1;
+        const levelKey = `level${effectiveLevel}` as keyof typeof WORD_BANK;
+        const words = WORD_BANK[levelKey] || WORD_BANK.level1;
+        // Pick a short word (3-5 letters) for the spelling challenge
+        const shortWords = words.filter(w => w.length >= 3 && w.length <= 5);
+        if (shortWords.length > 0) {
+          spellingWord = shortWords[Math.floor(Math.random() * shortWords.length)];
+        }
+      }
+
       // Generate gems on platforms and scattered on terrain
       const gems: Gem[] = [];
       let gemIdCounter = 0;
-      
+
+      // For spelling challenge: place spelling letters on the first few platforms in order
+      const spellingLetters = spellingWord ? spellingWord.split("") : [];
+      let spellingLetterIndex = 0;
+
       // Add rows of gems on top of each platform
-      platforms.forEach((platform) => {
-        const numGemsOnPlatform = Math.floor(platform.width / 0.8); // Space gems ~0.8 units apart
-        const startX = platform.x - (numGemsOnPlatform - 1) * 0.8 / 2; // Center the row on platform
-        const gemY = platform.y + platform.height / 2 + 0.8; // Place gems above platform
-        
+      adjustedPlatforms.forEach((platform, platformIndex) => {
+        const numGemsOnPlatform = Math.floor(platform.width / 0.8);
+        const startX = platform.x - (numGemsOnPlatform - 1) * 0.8 / 2;
+        const gemY = platform.y + platform.height / 2 + 0.8;
+
         for (let i = 0; i < numGemsOnPlatform; i++) {
+          let letter: string | undefined;
+
+          // Place spelling letters on center gems of early platforms
+          if (spellingLetterIndex < spellingLetters.length && i === Math.floor(numGemsOnPlatform / 2)) {
+            letter = spellingLetters[spellingLetterIndex];
+            spellingLetterIndex++;
+          }
+          // For remaining gems, ~30% get a random letter/word label
+          else if (Math.random() < 0.3) {
+            if (difficultyLevel === "letters") {
+              letter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+            } else {
+              // Show individual letters from the word bank for word mode too
+              letter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+            }
+          }
+
           gems.push({
             id: `gem-${gemIdCounter++}`,
             x: startX + i * 0.8,
             y: gemY,
             collected: false,
+            letter,
           });
         }
       });
-      
+
       // Add some scattered gems on terrain for variety
       const numScatteredGems = 3 + currentLevel;
       for (let i = 0; i < numScatteredGems; i++) {
+        let letter: string | undefined;
+        if (Math.random() < 0.4) {
+          letter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+        }
         gems.push({
           id: `gem-${gemIdCounter++}`,
           x: 5 + i * 4,
-          y: -3 + Math.random() * 2, // Lower altitude for terrain gems
+          y: -3 + Math.random() * 2,
           collected: false,
+          letter,
         });
       }
 
       // Generate enemies (many more enemies for longer levels)
-      const numEnemies = 15 + currentLevel * 5; // Significantly increased enemy count
+      const numEnemies = 5 + currentLevel * 2;
       const enemies: PlatformerEnemy[] = [];
-      const enemyTypes: Array<'enemy1' | 'enemy2' | 'enemy3'> = ['enemy1', 'enemy2', 'enemy3'];
+      const enemyTypes: Array<'enemy1' | 'enemy2' | 'enemy3' | 'bird'> = ['enemy1', 'enemy2', 'enemy3', 'bird'];
       
       // Spread enemies evenly across the level (from x=8 to x=235)
       const levelStart = 8;
@@ -1007,9 +1157,11 @@ export const useTankGame = create<TankGameState>()(
           maxHealth = 4; // Green blob is tougher
         } else if (type === 'enemy3') {
           maxHealth = 5; // Robot skeleton is toughest
+        } else if (type === 'bird') {
+          maxHealth = 2; // Birds are lighter/faster
         }
         
-        enemies.push({
+        const baseEnemy: PlatformerEnemy = {
           id: `enemy-${i}`,
           x: x,
           y: y,
@@ -1020,11 +1172,30 @@ export const useTankGame = create<TankGameState>()(
           type: type,
           health: maxHealth,
           maxHealth: maxHealth,
-        });
+        };
+        
+        // Add bird-specific arc movement properties
+        if (type === 'bird') {
+          // Birds fly in arcs across the screen
+          const arcWidth = 15 + Math.random() * 10; // Arc width between 15-25 units
+          const arcStartX = Math.max(levelStart, x - arcWidth / 2);
+          const arcEndX = Math.min(levelEnd, x + arcWidth / 2);
+          const arcHeight = 3 + Math.random() * 4; // Arc height between 3-7 units above ground
+          
+          baseEnemy.arcStartX = arcStartX;
+          baseEnemy.arcEndX = arcEndX;
+          baseEnemy.arcHeight = arcHeight;
+          baseEnemy.arcTime = Math.random(); // Start at random point in arc
+          baseEnemy.arcSpeed = (0.3 + Math.random() * 0.2) * 0.25; // 25% of previous speed
+          baseEnemy.vy = 0; // Will be calculated in movement loop
+          baseEnemy.y = -2 + Math.random() * 2; // Start at random height in air
+        }
+        
+        enemies.push(baseEnemy);
       }
 
       // Generate poop blobs (obstacles on the ground that player must jump over)
-      const numPoopBlobs = 10 + currentLevel * 3;
+      const numPoopBlobs = 3 + currentLevel * 2;
       const poopBlobs: PoopBlob[] = [];
       const blobWidth = 1.2;
       
@@ -1047,8 +1218,10 @@ export const useTankGame = create<TankGameState>()(
       set({
         platformerGems: gems,
         platformerEnemies: enemies,
-        platformerPlatforms: platforms,
+        platformerPlatforms: adjustedPlatforms,
         platformerPoopBlobs: poopBlobs,
+        spellingTargetWord: spellingWord,
+        spellingCollected: [],
       });
     },
 
@@ -1057,6 +1230,8 @@ export const useTankGame = create<TankGameState>()(
     },
 
     firePlatformerMissile: (x, y) => {
+      if (get().platformerMissiles.length >= MAX_PLATFORMER_MISSILES) return;
+
       const newMissile: Bullet = {
         id: `missile-${Date.now()}-${Math.random()}`,
         x: x + 0.5, // Spawn slightly ahead of player
@@ -1067,22 +1242,53 @@ export const useTankGame = create<TankGameState>()(
         isMissile: true,
       };
       
-      console.log("Missile created:", newMissile);
-
       set((state) => ({
         platformerMissiles: [...state.platformerMissiles, newMissile],
+      }));
+    },
+
+    destroyPoopBlob: (id) => {
+      set((state) => ({
+        platformerPoopBlobs: state.platformerPoopBlobs.filter(blob => blob.id !== id),
       }));
     },
 
     takePlatformerDamage: (amount) => {
       const { platformerPlayerHealth } = get();
       const newHealth = Math.max(0, platformerPlayerHealth - amount);
-      
+
       set({ platformerPlayerHealth: newHealth });
-      
+
       if (newHealth <= 0) {
         set({ phase: "game_over" });
       }
+    },
+
+    // Learning integration methods
+    setTankTargetWord: (word) => {
+      set({ tankTargetWord: word, tankTargetSpoken: false });
+    },
+
+    checkTankTargetHit: (enemyId) => {
+      const { enemies, tankTargetWord } = get();
+      const enemy = enemies.find(e => e.id === enemyId);
+      if (!enemy || !tankTargetWord || !enemy.word) return false;
+      return enemy.word.toUpperCase() === tankTargetWord.toUpperCase();
+    },
+
+    setSpellingTarget: (word) => {
+      set({ spellingTargetWord: word, spellingCollected: [] });
+    },
+
+    collectSpellingLetter: (letter) => {
+      const { spellingTargetWord, spellingCollected } = get();
+      if (!spellingTargetWord) return false;
+      const nextLetter = spellingTargetWord[spellingCollected.length];
+      if (letter.toUpperCase() === nextLetter?.toUpperCase()) {
+        set({ spellingCollected: [...spellingCollected, letter] });
+        return true;
+      }
+      return false;
     },
   }))
 );

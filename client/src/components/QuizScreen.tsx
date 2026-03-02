@@ -9,7 +9,9 @@ export function QuizScreen() {
   const [typedAnswer, setTypedAnswer] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [showWordHint, setShowWordHint] = useState(false);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const hasVoices = useRef(false);
 
   useEffect(() => {
     // Initialize speech synthesis with natural voice
@@ -37,7 +39,7 @@ export function QuizScreen() {
         
         if (preferredVoice && synthRef.current) {
           synthRef.current.voice = preferredVoice;
-          console.log('Selected voice:', preferredVoice.name);
+          hasVoices.current = true;
         }
       };
       
@@ -64,21 +66,25 @@ export function QuizScreen() {
   };
 
   const speakWord = () => {
-    if ('speechSynthesis' in window && synthRef.current && currentQuestion) {
-      let textToSpeak = "";
-      
-      if (currentQuestion.mode === "letter_sounds") {
-        // For letter sounds, speak the letter name in lowercase to avoid "capital" being spoken
-        textToSpeak = currentQuestion.correctAnswer.toLowerCase();
-      } else if (currentQuestion.mode === "typing") {
-        textToSpeak = currentQuestion.correctAnswer.toLowerCase();
-      } else {
-        textToSpeak = extractWordFromQuestion(currentQuestion.question).toLowerCase();
-      }
-      
-      window.speechSynthesis.cancel(); // Stop any current speech
+    if (!currentQuestion) return;
+
+    let textToSpeak = "";
+    if (currentQuestion.mode === "letter_sounds") {
+      textToSpeak = currentQuestion.correctAnswer.toLowerCase();
+    } else if (currentQuestion.mode === "typing") {
+      textToSpeak = currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      textToSpeak = extractWordFromQuestion(currentQuestion.question).toLowerCase();
+    }
+
+    if ('speechSynthesis' in window && synthRef.current && hasVoices.current) {
+      window.speechSynthesis.cancel();
       synthRef.current.text = textToSpeak;
       window.speechSynthesis.speak(synthRef.current);
+    } else {
+      // Visual fallback when speech synthesis is unavailable
+      setShowWordHint(true);
+      setTimeout(() => setShowWordHint(false), 2000);
     }
   };
 
@@ -122,37 +128,46 @@ export function QuizScreen() {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-blue-900 to-blue-700">
-      <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-2xl border-8 border-yellow-400 relative">
-        <div className="text-center mb-8">
+      <div className="bg-white rounded-lg p-4 md:p-8 max-w-2xl w-full mx-4 shadow-2xl border-4 md:border-8 border-yellow-400 relative">
+        <div className="text-center mb-4 md:mb-8">
           {playerName && (
-            <p className="text-2xl font-bold text-purple-700 mb-3">
+            <p className="text-lg md:text-2xl font-bold text-purple-700 mb-3">
               {playerName}, listen carefully!
             </p>
           )}
-          <h2 className="text-4xl font-bold text-blue-900 mb-6 font-mono">
+          <h2 className="text-2xl md:text-4xl font-bold text-blue-900 mb-3 md:mb-6 font-mono">
             READING CHALLENGE!
           </h2>
-          <div className="flex items-center justify-center gap-4 mb-4">
+          <div className="flex flex-col items-center gap-2 mb-4">
             <Button
               onClick={speakWord}
               className="bg-purple-500 hover:bg-purple-600 text-white h-20 w-20 rounded-full text-4xl flex items-center justify-center shadow-lg transform hover:scale-110 transition-all"
-              title="Read word aloud"
+              aria-label="Read word aloud"
             >
               🔊
             </Button>
+            {showWordHint && currentQuestion && (
+              <div className="text-3xl font-bold text-purple-700 bg-purple-100 px-6 py-2 rounded-lg animate-pulse">
+                {currentQuestion.mode === "letter_sounds"
+                  ? currentQuestion.correctAnswer
+                  : currentQuestion.mode === "typing"
+                    ? currentQuestion.correctAnswer
+                    : extractWordFromQuestion(currentQuestion.question)}
+              </div>
+            )}
           </div>
         </div>
 
         {currentQuestion.mode === "multiple_choice" || currentQuestion.mode === "letter_sounds" ? (
-          <div className={`grid ${gridCols} gap-4`}>
+          <div className={`grid ${gridCols} gap-2 md:gap-4`}>
             {currentQuestion.options.map((option, index) => (
               <Button
                 key={index}
                 onClick={() => handleAnswer(option)}
                 disabled={showFeedback}
                 className={`
-                  ${currentQuestion.mode === "letter_sounds" ? "h-20 text-4xl" : "h-24 text-2xl"} 
-                  font-bold font-mono transition-all
+                  ${currentQuestion.mode === "letter_sounds" ? "h-16 md:h-20 text-3xl md:text-4xl" : "h-16 md:h-24 text-lg md:text-2xl"}
+                  min-h-[60px] font-bold font-mono transition-all
                   ${showFeedback && selectedAnswer === option
                     ? isCorrect
                       ? "bg-green-500 hover:bg-green-500 text-white scale-110"
@@ -174,7 +189,7 @@ export function QuizScreen() {
                 onChange={(e) => setTypedAnswer(e.target.value)}
                 placeholder="Type the word here..."
                 disabled={showFeedback}
-                className="!text-5xl font-bold font-mono h-24 text-center border-4 border-blue-500 focus:border-purple-500 placeholder:text-5xl"
+                className="!text-5xl font-bold font-mono h-16 md:h-24 text-center border-4 border-blue-500 focus:border-purple-500 placeholder:text-3xl md:placeholder:text-5xl"
                 style={{ fontSize: '3rem' }}
                 autoFocus
               />
@@ -182,7 +197,7 @@ export function QuizScreen() {
             <Button
               type="submit"
               disabled={showFeedback || !typedAnswer.trim()}
-              className="w-full h-16 text-2xl font-bold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
+              className="w-full h-16 text-2xl font-bold bg-green-500 hover:bg-green-600 text-white disabled:opacity-50 min-h-[60px]"
             >
               Submit Answer
             </Button>
@@ -190,12 +205,12 @@ export function QuizScreen() {
         )}
 
         {showFeedback && (
-          <div className={`mt-6 text-center text-3xl font-bold ${isCorrect ? "text-green-600" : "text-red-600"}`}>
+          <div className={`mt-6 text-center text-xl md:text-3xl font-bold ${isCorrect ? "text-green-600" : "text-red-600"}`}>
             {isCorrect ? "🎉 CORRECT! Great job!" : "❌ Try again next time!"}
           </div>
         )}
 
-        <div className="mt-8 pt-6 border-t-4 border-yellow-400">
+        <div className="mt-4 md:mt-8 pt-3 md:pt-6 border-t-4 border-yellow-400">
           <div className="text-center mb-3">
             {currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds" ? (
               <>
