@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useTankGame, getRequiredLessonPoints } from "@/lib/stores/useTankGame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { speak, isVoiceReady } from "@/lib/speech";
 
 export function QuizScreen() {
   const { currentQuestion, answerQuestion, setPhase, lessonPoints, typingQuizCorrect, currentLevel, playerName } = useTankGame();
@@ -10,54 +11,6 @@ export function QuizScreen() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [showWordHint, setShowWordHint] = useState(false);
-  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const hasVoices = useRef(false);
-
-  useEffect(() => {
-    // Initialize speech synthesis with natural voice
-    if ('speechSynthesis' in window) {
-      synthRef.current = new SpeechSynthesisUtterance();
-      synthRef.current.rate = 0.85; // Slightly slow for clarity
-      synthRef.current.pitch = 1.0; // Natural pitch
-      
-      // Wait for voices to load and select the best one
-      const setVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        
-        // Prioritize high-quality voices for children
-        // 1. Google US English (most natural)
-        // 2. Microsoft voices
-        // 3. Any en-US voice
-        const preferredVoice = 
-          voices.find(v => v.name.includes('Google US English')) ||
-          voices.find(v => v.name.includes('Google') && v.lang.startsWith('en-US')) ||
-          voices.find(v => v.name.includes('Samantha')) || // macOS high-quality voice
-          voices.find(v => v.name.includes('Microsoft Zira')) || // Windows female voice
-          voices.find(v => v.name.includes('Microsoft') && v.lang.startsWith('en-US')) ||
-          voices.find(v => v.lang.startsWith('en-US')) ||
-          voices.find(v => v.lang.startsWith('en'));
-        
-        if (preferredVoice && synthRef.current) {
-          synthRef.current.voice = preferredVoice;
-          hasVoices.current = true;
-        }
-      };
-      
-      // Voices might not be loaded immediately
-      if (window.speechSynthesis.getVoices().length > 0) {
-        setVoice();
-      } else {
-        window.speechSynthesis.addEventListener('voiceschanged', setVoice);
-      }
-    }
-    
-    // Cleanup on unmount
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    };
-  }, []);
 
   const extractWordFromQuestion = (question: string): string => {
     // Extract the word from "Which word is WORD?" format
@@ -77,10 +30,8 @@ export function QuizScreen() {
       textToSpeak = extractWordFromQuestion(currentQuestion.question).toLowerCase();
     }
 
-    if ('speechSynthesis' in window && synthRef.current && hasVoices.current) {
-      window.speechSynthesis.cancel();
-      synthRef.current.text = textToSpeak;
-      window.speechSynthesis.speak(synthRef.current);
+    if (isVoiceReady()) {
+      speak(textToSpeak, 0.85);
     } else {
       // Visual fallback when speech synthesis is unavailable
       setShowWordHint(true);

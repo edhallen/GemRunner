@@ -7,6 +7,7 @@ import {
   SCORE_DEFEAT_PLATFORMER_ENEMY, MAX_PLATFORMER_MISSILES,
   SPEECH_RATE_SLOW, SPEECH_RATE_NORMAL,
 } from "@/lib/constants";
+import { speak } from "@/lib/speech";
 
 export type GamePhase = "menu" | "quiz" | "game_mode_selection" | "tank_selection" | "playing_tank" | "playing_platformer" | "level_complete" | "game_over" | "leaderboard";
 
@@ -950,14 +951,7 @@ export const useTankGame = create<TankGameState>()(
 
       // Speak the letter/word aloud when collected
       if (gem.letter) {
-        try {
-          const utterance = new SpeechSynthesisUtterance(gem.letter);
-          utterance.rate = SPEECH_RATE_NORMAL;
-          utterance.volume = 1;
-          speechSynthesis.speak(utterance);
-        } catch {
-          // Speech synthesis unavailable
-        }
+        speak(gem.letter.toLowerCase(), SPEECH_RATE_NORMAL);
 
         // Check spelling challenge
         const { spellingTargetWord, spellingCollected } = get();
@@ -972,14 +966,7 @@ export const useTankGame = create<TankGameState>()(
             if (newCollected.length === spellingTargetWord.length) {
               bonusPoints = SCORE_SPELLING_COMPLETE;
               // Speak the completed word
-              try {
-                const wordUtterance = new SpeechSynthesisUtterance(spellingTargetWord);
-                wordUtterance.rate = SPEECH_RATE_SLOW;
-                wordUtterance.volume = 1;
-                setTimeout(() => speechSynthesis.speak(wordUtterance), 500);
-              } catch {
-                // Speech synthesis unavailable
-              }
+              setTimeout(() => speak(spellingTargetWord, SPEECH_RATE_SLOW), 500);
             }
           }
         }

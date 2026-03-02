@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { useTankGame, WORD_BANK, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
 import { useProfiles } from "@/lib/stores/useProfiles";
 import { useKeyboardControls, useTexture, Text } from "@react-three/drei";
+import { speak } from "@/lib/speech";
 import { Controls } from "@/App";
 import {
   TANK_BULLET_SPEED, TANK_MISSILE_SPEED, TANK_FIRE_RATE_MS,
@@ -131,14 +132,7 @@ export function GameScene() {
     // Speak the target word once
     if (tankTargetWord && !targetWordSpoken.current) {
       targetWordSpoken.current = true;
-      try {
-        const utterance = new SpeechSynthesisUtterance(tankTargetWord);
-        utterance.rate = 0.7;
-        utterance.volume = 1;
-        speechSynthesis.speak(utterance);
-      } catch {
-        // Speech synthesis unavailable
-      }
+      speak(tankTargetWord.toLowerCase(), 0.7);
     }
 
     updatePowerUps();
