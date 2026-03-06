@@ -7,6 +7,11 @@ export interface AccuracyRecord {
   total: number;
 }
 
+export interface SrsEntry {
+  box: number;       // 1-4 (Leitner box)
+  nextReview: number; // timestamp
+}
+
 export interface ChildProfile {
   id: string;
   name: string;
@@ -19,6 +24,9 @@ export interface ChildProfile {
   totalAnswered: number;
   lettersAccuracy: Record<string, AccuracyRecord>;
   wordsAccuracy: Record<string, AccuracyRecord>;
+  phonicsStage: number; // 1-10
+  stageAccuracy: Record<number, AccuracyRecord>; // per-stage tracking
+  srs: Record<string, SrsEntry>; // spaced repetition per word
   createdAt: number;
 }
 
@@ -40,6 +48,16 @@ interface ProfilesState {
   getWeakWords: (count: number) => string[];
   shouldAdvanceWordLevel: () => boolean;
   advanceWordLevel: () => void;
+
+  // Phonics stage
+  updateStageAccuracy: (stage: number, correct: boolean) => void;
+  shouldAdvancePhonicsStage: () => boolean;
+  advancePhonicsStage: () => void;
+  getPhonicsStage: () => number;
+
+  // SRS
+  updateSrs: (word: string, correct: boolean) => void;
+  getOverdueWords: () => string[];
 }
 
 const STORAGE_KEY = "tankReaderProfiles";
@@ -104,6 +122,9 @@ export const useProfiles = create<ProfilesState>()(
         totalAnswered: 0,
         lettersAccuracy: {},
         wordsAccuracy: {},
+        phonicsStage: 1,
+        stageAccuracy: {},
+        srs: {},
         createdAt: Date.now(),
       };
 
@@ -273,6 +294,103 @@ export const useProfiles = create<ProfilesState>()(
         saveProfiles(updated);
         return { profiles: updated };
       });
+    },
+
+    // ── Phonics stage ──
+
+    updateStageAccuracy: (stage, correct) => {
+      const { activeProfileId } = get();
+      if (!activeProfileId) return;
+
+      set((state) => {
+        const updated = state.profiles.map((p) => {
+          if (p.id !== activeProfileId) return p;
+          const acc = { ...(p.stageAccuracy || {}) };
+          const existing = acc[stage] || { correct: 0, total: 0 };
+          acc[stage] = {
+            correct: existing.correct + (correct ? 1 : 0),
+            total: existing.total + 1,
+          };
+          return { ...p, stageAccuracy: acc };
+        });
+        saveProfiles(updated);
+        return { profiles: updated };
+      });
+    },
+
+    shouldAdvancePhonicsStage: () => {
+      const profile = get().getActiveProfile();
+      if (!profile || profile.difficultyLevel !== "words") return false;
+      if ((profile.phonicsStage || 1) >= 10) return false;
+
+      const stage = profile.phonicsStage || 1;
+      const acc = (profile.stageAccuracy || {})[stage];
+      if (!acc || acc.total < 10) return false;
+      return acc.correct / acc.total >= 0.8;
+    },
+
+    advancePhonicsStage: () => {
+      const { activeProfileId } = get();
+      if (!activeProfileId) return;
+
+      set((state) => {
+        const updated = state.profiles.map((p) => {
+          if (p.id !== activeProfileId) return p;
+          const current = p.phonicsStage || 1;
+          if (current >= 10) return p;
+          return { ...p, phonicsStage: current + 1 };
+        });
+        saveProfiles(updated);
+        return { profiles: updated };
+      });
+    },
+
+    getPhonicsStage: () => {
+      const profile = get().getActiveProfile();
+      return profile?.phonicsStage || 1;
+    },
+
+    // ── Spaced repetition ──
+
+    updateSrs: (word, correct) => {
+      const { activeProfileId } = get();
+      if (!activeProfileId) return;
+
+      const now = Date.now();
+      // Box intervals in ms: box1=0 (every session), box2=1 day, box3=3 days, box4=7 days
+      const BOX_INTERVALS = [0, 0, 86400000, 259200000, 604800000];
+
+      set((state) => {
+        const updated = state.profiles.map((p) => {
+          if (p.id !== activeProfileId) return p;
+          const srs = { ...(p.srs || {}) };
+          const key = word.toLowerCase();
+          const entry = srs[key] || { box: 1, nextReview: 0 };
+
+          if (correct) {
+            const newBox = Math.min(4, entry.box + 1);
+            srs[key] = { box: newBox, nextReview: now + BOX_INTERVALS[newBox] };
+          } else {
+            // Wrong → back to box 1
+            srs[key] = { box: 1, nextReview: 0 };
+          }
+
+          return { ...p, srs };
+        });
+        saveProfiles(updated);
+        return { profiles: updated };
+      });
+    },
+
+    getOverdueWords: () => {
+      const profile = get().getActiveProfile();
+      if (!profile) return [];
+      const now = Date.now();
+      const srs = profile.srs || {};
+      return Object.entries(srs)
+        .filter(([, entry]) => entry.nextReview <= now)
+        .sort((a, b) => a[1].box - b[1].box) // lowest box first
+        .map(([word]) => word);
     },
   }))
 );

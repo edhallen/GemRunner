@@ -6,20 +6,43 @@ import {
   SCORE_SPELLING_LETTER, SCORE_SPELLING_COMPLETE,
   SCORE_DEFEAT_PLATFORMER_ENEMY, MAX_PLATFORMER_MISSILES,
   SPEECH_RATE_SLOW, SPEECH_RATE_NORMAL,
+  getTerrainHeight,
+  CR_MAX_FIREBALLS, CR_FIREBALL_SPEED,
+  CR_SCORE_GEM, CR_SCORE_COIN, CR_SCORE_DEFEAT_KNIGHT, CR_SCORE_SPELLING_CORRECT,
+  CR_SCORE_BOSS_DEFEAT, CR_PIT_DAMAGE, CR_PIT_INVINCIBILITY_MS,
+  CR_PRICE_HEALTH_POTION, CR_PRICE_EXTRA_LIFE, CR_PRICE_FLIGHT_POTION,
+  CR_FLIGHT_DURATION_MS,
 } from "@/lib/constants";
-import { speak } from "@/lib/speech";
+import { getSpellingChallengeWord } from "@/lib/topWords";
+import { generateCastleRaiderLevel } from "@/lib/castleRaiderLevels";
+import { speak, speakWord, speakLetter } from "@/lib/speech";
+import {
+  PHONICS_STAGES, SIGHT_WORDS, getStageWords, getReviewWords,
+  getStageFamilies, findWordFamily, findWordFamilyGlobal, getWordBankByLevel,
+  type WordFamily,
+} from "@/lib/phonics";
 
-export type GamePhase = "menu" | "quiz" | "game_mode_selection" | "tank_selection" | "playing_tank" | "playing_platformer" | "level_complete" | "game_over" | "leaderboard";
+export type GamePhase = "menu" | "quiz" | "game_mode_selection" | "tank_selection" | "dragon_selection" | "playing_tank" | "playing_platformer" | "playing_castle_raider" | "castle_raider_store" | "level_complete" | "game_over" | "leaderboard";
 
-export type GameMode = "tank" | "platformer";
+export type GameMode = "tank" | "platformer" | "castle_raider";
 
 export type TankType = "light" | "medium" | "heavy" | "speed";
 
-export type QuizMode = "multiple_choice" | "typing" | "letter_sounds";
+export type DragonType = "og" | "explorer" | "wizard" | "warrior" | "monk";
+
+export const DRAGON_IMAGES: Record<DragonType, string> = {
+  og: "/dragon-og.png",
+  explorer: "/dragon-explorer.png",
+  wizard: "/dragon-wizard.png",
+  warrior: "/dragon-warrior.png",
+  monk: "/dragon-monk.png",
+};
+
+export type QuizMode = "multiple_choice" | "typing" | "letter_sounds" | "word_family";
 
 export interface BaseQuestion {
   id: string;
-  type: "word" | "letter_recognition" | "letter_sound" | "letter_combination" | "sight_word" | "cvc_word" | "blend_sound";
+  type: "word" | "letter_recognition" | "letter_sound" | "letter_combination" | "sight_word" | "cvc_word";
   question: string;
   correctAnswer: string;
   level: number;
@@ -40,7 +63,13 @@ export interface LetterSoundsQuestion extends BaseQuestion {
   letterSound: string;
 }
 
-export type Question = MultipleChoiceQuestion | TypingQuestion | LetterSoundsQuestion;
+export interface WordFamilyQuestion extends BaseQuestion {
+  mode: "word_family";
+  options: string[];
+  familyPattern: string; // e.g. "-at"
+}
+
+export type Question = MultipleChoiceQuestion | TypingQuestion | LetterSoundsQuestion | WordFamilyQuestion;
 
 export interface Enemy {
   id: string;
@@ -117,6 +146,65 @@ export interface PoopBlob {
   height: number;
 }
 
+// Castle Raider types
+export type CRKnightType = "basic_knight" | "armored_knight" | "dark_knight" | "skeleton" | "evil_knight" | "evil_dragon" | "beast" | "goblin";
+
+export interface CastleRaiderKnight {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  patrolLeft: number;
+  patrolRight: number;
+  isAlive: boolean;
+  type: CRKnightType;
+  health: number;
+  maxHealth: number;
+  speed: number;
+}
+
+export interface CastleRaiderGem {
+  id: string;
+  x: number;
+  y: number;
+  collected: boolean;
+}
+
+export interface CastleRaiderCoin {
+  id: string;
+  x: number;
+  y: number;
+  collected: boolean;
+}
+
+export interface CastleRaiderPit {
+  id: string;
+  startX: number;
+  endX: number;
+}
+
+export interface CastleRaiderFireball {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+}
+
+export interface CastleRaiderBossProjectile {
+  id: string;
+  x: number;
+  y: number;
+  vy: number;
+  vx?: number;
+}
+
+export interface CRBossConfig {
+  health: number;
+  maxHealth: number;
+  x: number;
+}
+
 export type DifficultyLevel = "letters" | "words";
 
 interface TankGameState {
@@ -164,9 +252,47 @@ interface TankGameState {
   spellingTargetWord: string | null; // Target word to spell by collecting letters in order
   spellingCollected: string[]; // Letters collected so far
 
+  // Platformer word door state
+  wordDoorActive: boolean;
+  wordDoorWord: string | null; // correct word
+  wordDoorOptions: string[]; // 3 options
+  wordDoorCount: number; // doors shown this level (max 3)
+
+  // Castle Raider state
+  crPlayerX: number;
+  crPlayerY: number;
+  crPlayerVX: number;
+  crPlayerVY: number;
+  crIsGrounded: boolean;
+  crPlayerHealth: number;
+  crMaxHealth: number;
+  crLives: number;
+  crGemCount: number;
+  crCoinCount: number;
+  crKnights: CastleRaiderKnight[];
+  crGems: CastleRaiderGem[];
+  crCoins: CastleRaiderCoin[];
+  crPlatforms: Platform[];
+  crPits: CastleRaiderPit[];
+  crFireballs: CastleRaiderFireball[];
+  crBossProjectiles: CastleRaiderBossProjectile[];
+  crBoss: CRBossConfig | null;
+  crBossActive: boolean;
+  crFacingRight: boolean;
+  crLastSafeX: number;
+  crLastSafeY: number;
+  crInvincibleUntil: number;
+  crFlightUntil: number;
+  crFlightPotions: number;
+  crHealthPotions: number;
+  crSpellingChallengeActive: boolean;
+  crSpellingWord: string | null;
+  crSpellingCorrectCount: number; // counts toward treasure chest (3 needed)
+  crLevelLength: number;
+
   // Shared state
   currentQuestion: Question | null;
-  currentQuizMode: "typing" | "multiple_choice" | "letter_sounds" | null;
+  currentQuizMode: QuizMode | null;
   questionsAnswered: number;
   correctAnswers: number;
   quizQuestionsAnswered: number;
@@ -180,6 +306,8 @@ interface TankGameState {
   setPlayerName: (name: string) => void;
   setDifficultyLevel: (level: DifficultyLevel) => void;
   selectGameMode: (mode: GameMode) => void;
+  selectedDragon: DragonType | null;
+  selectDragon: (dragon: DragonType) => void;
   selectTank: (tank: TankType) => void;
   answerQuestion: (answer: string) => boolean;
   nextLevel: () => void;
@@ -218,6 +346,36 @@ interface TankGameState {
   checkTankTargetHit: (enemyId: string) => boolean; // Returns true if this enemy had the target word
   setSpellingTarget: (word: string | null) => void;
   collectSpellingLetter: (letter: string) => boolean; // Returns true if letter was next in sequence
+
+  // Word door methods
+  triggerWordDoor: () => void;
+  answerWordDoor: (answer: string) => boolean;
+  dismissWordDoor: () => void;
+
+  // Castle Raider methods
+  initializeCastleRaiderLevel: () => void;
+  updateCRPlayer: (x: number, y: number, vx: number, vy: number, grounded: boolean) => void;
+  setCRFacing: (right: boolean) => void;
+  fireCRFireball: (x: number, y: number, facingRight: boolean) => void;
+  setCRFireballs: (fireballs: CastleRaiderFireball[]) => void;
+  setCRBossProjectiles: (projectiles: CastleRaiderBossProjectile[]) => void;
+  damageCRKnight: (id: string, damage: number) => void;
+  defeatCRKnight: (id: string) => void;
+  setCRKnights: (knights: CastleRaiderKnight[]) => void;
+  collectCRGem: (id: string) => void;
+  collectCRCoin: (id: string) => void;
+  takeCRDamage: (amount: number) => void;
+  crFallInPit: () => void;
+  damageCRBoss: (damage: number) => void;
+  defeatCRBoss: () => void;
+  startSpellingChallenge: () => void;
+  answerSpellingChallenge: (answer: string) => boolean;
+  dismissSpellingChallenge: () => void;
+  useCRHealthPotion: () => void;
+  useCRFlightPotion: () => void;
+  buyCRItem: (item: "health_potion" | "extra_life" | "flight_potion") => boolean;
+  updateCRLastSafe: (x: number, y: number) => void;
+  setCRBossActive: (active: boolean) => void;
 }
 
 // Letter sounds for letter learning mode
@@ -232,95 +390,91 @@ const LETTER_SOUNDS: { [key: string]: string } = {
 
 const ALL_LETTERS = Object.keys(LETTER_SOUNDS);
 
-// Simple word list for typing quiz mode
-// Most common English words suitable for typing practice
-const TYPING_WORDS = [
-  "this", "them", "that", "the", "is", "it", "who", "what", "am", "and",
-  "he", "she", "of", "was", "have", "said", "can", "in", "his", "her",
-  "your", "game", "from", "are", "name", "lego", "go", "to", "star", "wars"
-];
+// Backward-compatible WORD_BANK export — now sourced from phonics stages
+export const WORD_BANK = getWordBankByLevel();
 
-// Comprehensive word bank with 200+ words organized by difficulty (exported for use in game scenes)
-// Includes high-frequency English words and Star Wars vocabulary
-export const WORD_BANK = {
-  level1: [
-    // Basic sight words and simple 2-3 letter words
-    "IT", "IS", "THE", "CAT", "DOG", "BIG", "RUN", "SIT", "CUP", "PAN", 
-    "BOX", "ZOO", "RED", "HOT", "EAT", "END", "BAT", "HAT", "SUN", "BED",
-    "FLY", "LOW", "GO", "GET", "SEE", "SAW", "DAY", "WAY", "BOY", "MAN",
-    "OLD", "NEW", "TOP", "POP", "MOM", "DAD", "YES", "HIM", "HER", "SHE",
-    "HIS", "HAS", "HAD", "CAN", "MAY", "BUT", "NOT", "OUT", "OFF", "NOW"
-  ],
-  level2: [
-    // Common 4-letter words and basic Star Wars terms
-    "THIS", "THAT", "WHAT", "WHO", "HOW", "FISH", "JUMP", "STOP", "FOOD", 
-    "COLD", "HIGH", "BLUE", "PINK", "TANK", "GAME", "STAR", "SHIP", "LOOK", "KING", "WET",
-    "WARS", "GOOD", "HELP", "OVER", "COME", "MADE", "TAKE", "JUST", "KNOW", "OPEN",
-    "GIRL", "BABY", "HOME", "MAKE", "THEM", "WANT", "FIND", "WENT", "CALL", "LIVE",
-    "BEEN", "WORK", "HOPE", "HERO", "SAVE", "FREE", "DARK", "TURN", "FIRE", "WAR"
-  ],
-  level3: [
-    // Intermediate words with blends and common vocabulary
-    "WHICH", "START", "CHOOSE", "YELLOW", "GREEN", "BLACK", "WHITE", "PLAY", 
-    "TREE", "QUIT", "VEST", "NEST", "BEST", "WEST", "FROG", "MILK", "CLOCK", "GRASS", "SNAP", "WHEN",
-    "THINK", "WATER", "THEIR", "PLACE", "POWER", "SPACE", "FORCE", "LIGHT", "FIGHT", "REBEL",
-    "PEACE", "YOUNG", "BRAVE", "TRUST", "WORLD", "FOUND", "DREAM", "HEART", "HAPPY", "FRIEND",
-    "SMALL", "WHERE", "WRITE", "ABOUT", "OFTEN", "FIRST", "HOUSE", "STORY", "TEACH", "LEARN"
-  ],
-  level4: [
-    // Advanced words with complex patterns (50 words)
-    "QUICK", "BRING", "THANK", "PLANT", "STAND", "GRAND", "BRAND",
-    "BLEND", "SPEND", "TREND", "FLOAT", "GREAT", "TREAT", "SPEED", "QUEEN", "GRAPE", "CRAVE", "SWING",
-    "ESCAPE", "ATTACK", "MASTER", "RESCUE", "DANGER", "SHIELD", "WEAPON", "EMPIRE", "GALAXY", "PLANET",
-    "BEFORE", "ALWAYS", "SECOND", "FAMILY", "SCHOOL", "BELONG", "NUMBER", "LETTER", "FATHER",
-    "MOTHER", "PEOPLE", "LISTEN", "SHOULD", "RETURN", "ENOUGH", "OTHERS", "TRAVEL", "APPEAR", "FOLLOW",
-    "SISTER", "AROUND", "ANSWER"
-  ],
-  level5: [
-    // Complex and longer words (50 words)
-    "FLIGHT", "BRIGHT", "FROZEN", "BROKEN", "SPOKEN", "CHANGE",
-    "STRANGE", "ORANGE", "PURPLE", "SILVER", "GOLDEN", "ROCKET", "CASTLE", "DRAGON", "WIZARD", "KNIGHT", "BATTLE", "SPRING", "STRONG",
-    "FREEDOM", "MISSION", "SOLDIER", "DESTROY", "BELIEVE", "PRINCESS", "TOGETHER", "CHILDREN", "BETWEEN", "NOTHING",
-    "WITHOUT", "AGAINST", "ANOTHER", "PRESENT", "THROUGH", "SPECIAL", "CAPTAIN", "FORWARD", "COMMAND", "PROTECT",
-    "SEVERAL", "BECAUSE", "JOURNEY", "PICTURE", "THOUGHT", "MACHINE", "QUESTION", "COMPLETE", "DARKNESS", "POWERFUL",
-    "IMPORTANT"
-  ]
-};
+// All phonics words (uppercase) for distractor generation
+const ALL_PHONICS_WORDS = PHONICS_STAGES.flatMap(s => s.words.map(w => w.toUpperCase()));
 
-// All words combined for generating distractors
-const ALL_WORDS = [
-  ...WORD_BANK.level1,
-  ...WORD_BANK.level2,
-  ...WORD_BANK.level3,
-  ...WORD_BANK.level4,
-  ...WORD_BANK.level5
-];
+// Select words for a quiz based on phonics stage and SRS priority
+function selectQuizWord(): string {
+  const profileState = useProfiles.getState();
+  const profile = profileState.getActiveProfile();
+  const stage = profile?.phonicsStage || 1;
 
-// Function to generate similar-looking distractor words
+  // 1. Overdue SRS words first
+  const overdue = profileState.getOverdueWords();
+  if (overdue.length > 0 && Math.random() < 0.4) {
+    return overdue[Math.floor(Math.random() * overdue.length)];
+  }
+
+  // 2. Current stage words (60%)
+  const stageWords = getStageWords(stage);
+  // 3. Review from prior stages (30%)
+  const reviewWords = getReviewWords(stage);
+  // 4. Sight words (10%)
+
+  const roll = Math.random();
+  let pool: string[];
+  if (roll < 0.6 || reviewWords.length === 0) {
+    pool = stageWords;
+  } else if (roll < 0.9) {
+    pool = reviewWords.length > 0 ? reviewWords : stageWords;
+  } else {
+    pool = SIGHT_WORDS;
+  }
+
+  // Try weak words first
+  const weakWords = profileState.getWeakWords(5).map(w => w.toLowerCase());
+  const weakInPool = weakWords.filter(w => pool.includes(w));
+  if (weakInPool.length > 0 && Math.random() < 0.6) {
+    return weakInPool[Math.floor(Math.random() * weakInPool.length)];
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Generate distractors preferring same word family (harder, more educational)
 const generateDistractors = (correctWord: string, count: number): string[] => {
   const distractors: string[] = [];
-  const wordLength = correctWord.length;
-  
-  // Get words of similar length from the word bank
-  const similarWords = ALL_WORDS.filter(w => 
-    w !== correctWord && 
-    Math.abs(w.length - wordLength) <= 1
-  );
-  
-  // Shuffle and take unique distractors
-  const shuffled = similarWords.sort(() => Math.random() - 0.5);
-  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
-    distractors.push(shuffled[i]);
-  }
-  
-  // If we don't have enough distractors, generate some by modifying letters
-  while (distractors.length < count && distractors.length < ALL_WORDS.length - 1) {
-    const randomWord = ALL_WORDS[Math.floor(Math.random() * ALL_WORDS.length)];
-    if (randomWord !== correctWord && !distractors.includes(randomWord)) {
-      distractors.push(randomWord);
+  const upper = correctWord.toUpperCase();
+
+  // Try same family distractors first
+  const family = findWordFamilyGlobal(correctWord);
+  if (family) {
+    const familyDistractors = family.words
+      .filter(w => w.toUpperCase() !== upper)
+      .map(w => w.toUpperCase());
+    const shuffledFamily = familyDistractors.sort(() => Math.random() - 0.5);
+    for (const d of shuffledFamily) {
+      if (distractors.length >= count) break;
+      distractors.push(d);
     }
   }
-  
+
+  // Fill remaining from similar-length words
+  const wordLength = correctWord.length;
+  const similarWords = ALL_PHONICS_WORDS.filter(w =>
+    w !== upper &&
+    !distractors.includes(w) &&
+    Math.abs(w.length - wordLength) <= 1
+  ).sort(() => Math.random() - 0.5);
+
+  for (const w of similarWords) {
+    if (distractors.length >= count) break;
+    distractors.push(w);
+  }
+
+  // Last resort: any word
+  if (distractors.length < count) {
+    const remaining = ALL_PHONICS_WORDS.filter(w => w !== upper && !distractors.includes(w))
+      .sort(() => Math.random() - 0.5);
+    for (const w of remaining) {
+      if (distractors.length >= count) break;
+      distractors.push(w);
+    }
+  }
+
   return distractors.slice(0, count);
 };
 
@@ -393,20 +547,75 @@ const getLetterSoundQuestion = (): LetterSoundsQuestion => {
   };
 };
 
+// Generate a word_family question
+const getWordFamilyQuestion = (level: number): WordFamilyQuestion | null => {
+  const profileState = useProfiles.getState();
+  const stage = profileState.getPhonicsStage();
+  const families = getStageFamilies(stage);
+
+  // Also include families from prior stages
+  const allFamilies = [...families];
+  for (let s = Math.max(1, stage - 2); s < stage; s++) {
+    allFamilies.push(...getStageFamilies(s));
+  }
+
+  // Need a family with at least 3 words
+  const usable = allFamilies.filter(f => f.words.length >= 3);
+  if (usable.length === 0) return null;
+
+  const family = usable[Math.floor(Math.random() * usable.length)];
+  const correctWord = family.words[Math.floor(Math.random() * family.words.length)];
+
+  // Options are all from the same family (shuffle)
+  const options = shuffleArray([...family.words]).slice(0, Math.min(4, family.words.length))
+    .map(w => w.toUpperCase());
+
+  // Ensure correct answer is in options
+  const upperCorrect = correctWord.toUpperCase();
+  if (!options.includes(upperCorrect)) {
+    options[0] = upperCorrect;
+  }
+
+  return {
+    id: `q-${Date.now()}-${Math.random()}`,
+    type: "word",
+    mode: "word_family",
+    question: `Which word do you hear?`,
+    options: shuffleArray(options),
+    correctAnswer: upperCorrect,
+    familyPattern: family.pattern,
+    level,
+  };
+};
+
 // Generate a random question for a given level
-const getQuestionForLevel = (level: number, mode?: "typing" | "multiple_choice" | "letter_sounds"): Question | null => {
+const getQuestionForLevel = (level: number, mode?: QuizMode): Question | null => {
   // If letter_sounds mode, generate letter question
   if (mode === "letter_sounds") {
     return getLetterSoundQuestion();
   }
-  
-  // Use provided mode or randomly choose quiz mode (50/50 chance)
-  const quizMode = mode || (Math.random() < 0.5 ? "typing" : "multiple_choice");
-  
+
+  // For words difficulty, select mode using rotation if not specified:
+  // 33% multiple_choice, 33% word_family, 33% typing
+  let quizMode: QuizMode = mode || (() => {
+    const r = Math.random();
+    if (r < 0.33) return "multiple_choice";
+    if (r < 0.66) return "word_family";
+    return "typing";
+  })();
+
+  if (quizMode === "word_family") {
+    const q = getWordFamilyQuestion(level);
+    if (q) return q;
+    // Fallback to multiple_choice if no families available
+    quizMode = "multiple_choice";
+  }
+
   if (quizMode === "typing") {
-    // Generate typing question from simple word list
-    const correctWord = TYPING_WORDS[Math.floor(Math.random() * TYPING_WORDS.length)];
-    
+    // Typing mode draws from phonics stage words (prefer 3-4 letter words)
+    const word = selectQuizWord();
+    const correctWord = word.length <= 4 ? word : selectQuizWord(); // prefer short words
+
     return {
       id: `q-${Date.now()}-${Math.random()}`,
       type: "word",
@@ -415,51 +624,31 @@ const getQuestionForLevel = (level: number, mode?: "typing" | "multiple_choice" 
       correctAnswer: correctWord,
       level
     };
-  } else {
-    // Generate multiple choice question from level word bank
-    // Use profile's word level if available, otherwise use game level
-    const profileState = useProfiles.getState();
-    const profile = profileState.getActiveProfile();
-    const effectiveLevel = profile?.difficultyLevel === "words" ? profile.wordLevel : level;
-    const levelKey = `level${effectiveLevel}` as keyof typeof WORD_BANK;
-    const words = WORD_BANK[levelKey];
-
-    if (!words || words.length === 0) return null;
-
-    // Try to pick from weak words, otherwise random
-    const weakWords = profileState.getWeakWords(5);
-    let correctWord: string;
-    if (weakWords.length > 0 && Math.random() < 0.6) {
-      // 60% chance to focus on weak words
-      const weakInLevel = weakWords.filter(w => words.includes(w));
-      correctWord = weakInLevel.length > 0
-        ? weakInLevel[Math.floor(Math.random() * weakInLevel.length)]
-        : words[Math.floor(Math.random() * words.length)];
-    } else {
-      correctWord = words[Math.floor(Math.random() * words.length)];
-    }
-
-    // Fewer options for younger/newer players, more as they improve
-    const baseOptions = profile && profile.totalAnswered < 10 ? 3 : 4;
-    const numOptions = Math.min(9, Math.max(3, baseOptions + Math.floor(effectiveLevel / 2)));
-    const numDistractors = numOptions - 1; // Subtract 1 for the correct answer
-    
-    // Generate random number of distractor words
-    const distractors = generateDistractors(correctWord, numDistractors);
-    
-    // Combine correct answer with distractors and shuffle
-    const allOptions = shuffleArray([correctWord, ...distractors]);
-    
-    return {
-      id: `q-${Date.now()}-${Math.random()}`,
-      type: "word",
-      mode: "multiple_choice",
-      question: `Which word is ${correctWord}?`,
-      options: allOptions,
-      correctAnswer: correctWord,
-      level
-    };
   }
+
+  // multiple_choice
+  const correctWord = selectQuizWord().toUpperCase();
+
+  // Fewer options for younger/newer players, more as they improve
+  const profileState = useProfiles.getState();
+  const profile = profileState.getActiveProfile();
+  const effectiveLevel = profile?.phonicsStage || 1;
+  const baseOptions = profile && profile.totalAnswered < 10 ? 3 : 4;
+  const numOptions = Math.min(9, Math.max(3, baseOptions + Math.floor(effectiveLevel / 3)));
+  const numDistractors = numOptions - 1;
+
+  const distractors = generateDistractors(correctWord, numDistractors);
+  const allOptions = shuffleArray([correctWord, ...distractors]);
+
+  return {
+    id: `q-${Date.now()}-${Math.random()}`,
+    type: "word",
+    mode: "multiple_choice",
+    question: `Which word is ${correctWord}?`,
+    options: allOptions,
+    correctAnswer: correctWord,
+    level
+  };
 };
 
 const loadHighScore = (): number => {
@@ -493,6 +682,7 @@ export const useTankGame = create<TankGameState>()(
     playerHealth: 100,
     maxHealth: 100,
     playerTank: null,
+    selectedDragon: null,
     playerX: -8,
     playerY: 0,
     enemies: [],
@@ -525,6 +715,44 @@ export const useTankGame = create<TankGameState>()(
     spellingTargetWord: null,
     spellingCollected: [],
 
+    // Platformer word door state
+    wordDoorActive: false,
+    wordDoorWord: null,
+    wordDoorOptions: [],
+    wordDoorCount: 0,
+
+    // Castle Raider state
+    crPlayerX: 2,
+    crPlayerY: 0,
+    crPlayerVX: 0,
+    crPlayerVY: 0,
+    crIsGrounded: false,
+    crPlayerHealth: 100,
+    crMaxHealth: 100,
+    crLives: 1,
+    crGemCount: 0,
+    crCoinCount: 0,
+    crKnights: [],
+    crGems: [],
+    crCoins: [],
+    crPlatforms: [],
+    crPits: [],
+    crFireballs: [],
+    crBossProjectiles: [],
+    crBoss: null,
+    crBossActive: false,
+    crFacingRight: true,
+    crLastSafeX: 2,
+    crLastSafeY: 0,
+    crInvincibleUntil: 0,
+    crFlightUntil: 0,
+    crFlightPotions: 0,
+    crHealthPotions: 0,
+    crSpellingChallengeActive: false,
+    crSpellingWord: null,
+    crSpellingCorrectCount: 0,
+    crLevelLength: 120,
+
     // Shared state
     currentQuestion: null,
     currentQuizMode: null,
@@ -542,7 +770,7 @@ export const useTankGame = create<TankGameState>()(
       const requiredPoints = getRequiredLessonPoints(currentLevel);
       
       // Clear quiz session state when transitioning to phases that represent session breaks
-      if (phase === "menu" || phase === "level_complete" || phase === "game_over") {
+      if (phase === "menu" || phase === "level_complete" || phase === "game_over" || phase === "castle_raider_store") {
         set({
           phase,
           currentQuizMode: null,
@@ -552,12 +780,12 @@ export const useTankGame = create<TankGameState>()(
       }
       
       // Gate game mode selection and playing behind quiz completion requirements
-      // BUT allow direct access to playing_platformer (for TEST button)
+      // BUT allow direct access to playing_platformer and playing_castle_raider (for TEST button)
       if (phase === "game_mode_selection" || phase === "tank_selection" || phase === "playing_tank") {
         let canAdvance = false;
         
         // Check requirements based on current quiz mode
-        if (currentQuizMode === "typing" || currentQuizMode === "letter_sounds") {
+        if (currentQuizMode === "typing" || currentQuizMode === "letter_sounds" || currentQuizMode === "word_family") {
           canAdvance = typingQuizCorrect >= 3;
         } else {
           canAdvance = lessonPoints >= requiredPoints;
@@ -585,9 +813,15 @@ export const useTankGame = create<TankGameState>()(
         // For "letters" difficulty, use letter_sounds mode
         // For "words" difficulty, randomly choose between typing and multiple_choice
         const quizMode = existingMode || (
-          difficultyLevel === "letters" 
+          difficultyLevel === "letters"
             ? "letter_sounds"
-            : (Math.random() < 0.5 ? "typing" : "multiple_choice")
+            : (() => {
+                // Rotate through quiz modes for variety
+                const r = Math.random();
+                if (r < 0.33) return "multiple_choice" as const;
+                if (r < 0.66) return "word_family" as const;
+                return "typing" as const;
+              })()
         );
         const isNewSession = !existingMode;
         
@@ -628,11 +862,17 @@ export const useTankGame = create<TankGameState>()(
       set({ selectedGameMode: mode });
       if (mode === "tank") {
         set({ phase: "tank_selection" });
+      } else if (mode === "castle_raider") {
+        set({ phase: "dragon_selection" });
       } else {
         // Platformer mode - initialize level and go straight to playing
         get().initializePlatformerLevel();
         set({ phase: "playing_platformer" });
       }
+    },
+
+    selectDragon: (dragon) => {
+      set({ selectedDragon: dragon });
     },
 
     selectTank: (tank) => {
@@ -654,6 +894,11 @@ export const useTankGame = create<TankGameState>()(
         profileStore.updateAccuracy(currentQuestion.correctAnswer, "letter", isCorrect);
       } else {
         profileStore.updateAccuracy(currentQuestion.correctAnswer, "word", isCorrect);
+        // Update SRS for word-based questions
+        profileStore.updateSrs(currentQuestion.correctAnswer, isCorrect);
+        // Update phonics stage accuracy
+        const stage = profileStore.getPhonicsStage();
+        profileStore.updateStageAccuracy(stage, isCorrect);
       }
 
       // Check if word level should advance
@@ -661,9 +906,14 @@ export const useTankGame = create<TankGameState>()(
         profileStore.advanceWordLevel();
       }
 
+      // Check if phonics stage should advance
+      if (profileStore.shouldAdvancePhonicsStage()) {
+        profileStore.advancePhonicsStage();
+      }
+
       // Different scoring based on quiz mode
-      if (currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds") {
-        // Typing and letter_sounds mode: no penalty for wrong answers, just track correct count
+      if (currentQuestion.mode === "typing" || currentQuestion.mode === "letter_sounds" || currentQuestion.mode === "word_family") {
+        // Typing, letter_sounds, word_family: no penalty for wrong answers, just track correct count
         const newTypingCorrect = isCorrect ? typingQuizCorrect + 1 : typingQuizCorrect;
         
         set({
@@ -690,18 +940,31 @@ export const useTankGame = create<TankGameState>()(
     },
 
     nextLevel: () => {
-      const { currentLevel, difficultyLevel } = get();
+      const { currentLevel, difficultyLevel, selectedGameMode } = get();
       const newLevel = currentLevel + 1;
 
-      if (newLevel > 5) {
+      // Castle Raider has 10 levels
+      const maxLevel = selectedGameMode === "castle_raider" ? 10 : 5;
+      if (newLevel > maxLevel) {
         set({ currentLevel: newLevel, phase: "game_over" });
+      } else if (selectedGameMode === "castle_raider") {
+        // For castle raider, go to store between levels
+        set({
+          currentLevel: newLevel,
+          phase: "castle_raider_store",
+        });
       } else {
         // Select quiz mode based on difficulty level
         // For "letters" difficulty, use letter_sounds mode
         // For "words" difficulty, randomly choose between typing and multiple_choice
-        const newQuizMode = difficultyLevel === "letters"
+        const newQuizMode: QuizMode = difficultyLevel === "letters"
           ? "letter_sounds"
-          : (Math.random() < 0.5 ? "typing" : "multiple_choice");
+          : (() => {
+              const r = Math.random();
+              if (r < 0.33) return "multiple_choice";
+              if (r < 0.66) return "word_family";
+              return "typing";
+            })();
 
         set({
           currentLevel: newLevel,
@@ -725,6 +988,10 @@ export const useTankGame = create<TankGameState>()(
           platformerPoopBlobs: [],
           platformerMissiles: [],
           platformerReachedFlag: false,
+          wordDoorActive: false,
+          wordDoorWord: null,
+          wordDoorOptions: [],
+          wordDoorCount: 0,
           currentQuestion: getQuestionForLevel(newLevel, newQuizMode),
           quizQuestionsAnswered: 0,
           quizCorrectAnswers: 0,
@@ -744,6 +1011,7 @@ export const useTankGame = create<TankGameState>()(
         playerHealth: 100,
         maxHealth: 100,
         playerTank: null,
+        selectedDragon: null,
         playerX: -8,
         playerY: 0,
         enemies: [],
@@ -767,6 +1035,41 @@ export const useTankGame = create<TankGameState>()(
         tankTargetSpoken: false,
         spellingTargetWord: null,
         spellingCollected: [],
+        wordDoorActive: false,
+        wordDoorWord: null,
+        wordDoorOptions: [],
+        wordDoorCount: 0,
+        // Reset Castle Raider state
+        crPlayerX: 2,
+        crPlayerY: 0,
+        crPlayerVX: 0,
+        crPlayerVY: 0,
+        crIsGrounded: false,
+        crPlayerHealth: 100,
+        crMaxHealth: 100,
+        crLives: 1,
+        crGemCount: 0,
+        crCoinCount: 0,
+        crKnights: [],
+        crGems: [],
+        crCoins: [],
+        crPlatforms: [],
+        crPits: [],
+        crFireballs: [],
+        crBossProjectiles: [],
+        crBoss: null,
+        crBossActive: false,
+        crFacingRight: true,
+        crLastSafeX: 2,
+        crLastSafeY: 0,
+        crInvincibleUntil: 0,
+        crFlightUntil: 0,
+        crFlightPotions: 0,
+        crHealthPotions: 0,
+        crSpellingChallengeActive: false,
+        crSpellingWord: null,
+        crSpellingCorrectCount: 0,
+        crLevelLength: 120,
         enemiesDefeated: 0,
         powerUpsCollected: 0,
         currentQuestion: null,
@@ -966,7 +1269,7 @@ export const useTankGame = create<TankGameState>()(
             if (newCollected.length === spellingTargetWord.length) {
               bonusPoints = SCORE_SPELLING_COMPLETE;
               // Speak the completed word
-              setTimeout(() => speak(spellingTargetWord, SPEECH_RATE_SLOW), 500);
+              setTimeout(() => speakWord(spellingTargetWord), 500);
             }
           }
         }
@@ -1041,27 +1344,44 @@ export const useTankGame = create<TankGameState>()(
         { id: 'plat-36', x: 220, y: -1.3, width: 3, height: 0.5 },
       ];
 
-      // Lower all platforms significantly so player is fully visible when on them
-      const adjustedPlatforms: Platform[] = platforms.map((platform) => ({
-        ...platform,
-        y: platform.y - 2.5, // Lower by 2.5 units total (was -1, now -2.5)
-      }));
+      // Lower all platforms, then ensure none overlap with terrain (hills)
+      const adjustedPlatforms: Platform[] = platforms.map((platform) => {
+        let adjustedY = platform.y - 2.5;
+        // Check terrain height across the platform's horizontal span
+        const halfW = platform.width / 2;
+        let maxTerrain = -Infinity;
+        for (let sx = platform.x - halfW; sx <= platform.x + halfW; sx += 0.5) {
+          maxTerrain = Math.max(maxTerrain, getTerrainHeight(sx));
+        }
+        // Platform bottom must be above the highest terrain point under it (with 0.5 gap)
+        const platformBottom = adjustedY - platform.height / 2;
+        const minBottom = maxTerrain + 0.5;
+        if (platformBottom < minBottom) {
+          adjustedY = minBottom + platform.height / 2;
+        }
+        return { ...platform, y: adjustedY };
+      });
 
       // Determine difficulty and pick letters/words for labeled gems
       const { difficultyLevel } = get();
       const profileState = useProfiles.getState();
       const profile = profileState.getActiveProfile();
 
-      // Pick a spelling target word for word mode
+      // Pick a spelling target word for platformer mode using phonics stage
       let spellingWord: string | null = null;
       if (difficultyLevel === "words" && profile) {
-        const effectiveLevel = profile.wordLevel || 1;
-        const levelKey = `level${effectiveLevel}` as keyof typeof WORD_BANK;
-        const words = WORD_BANK[levelKey] || WORD_BANK.level1;
-        // Pick a short word (3-5 letters) for the spelling challenge
+        const stage = profile.phonicsStage || 1;
+        const words = getStageWords(stage).map(w => w.toUpperCase());
         const shortWords = words.filter(w => w.length >= 3 && w.length <= 5);
         if (shortWords.length > 0) {
           spellingWord = shortWords[Math.floor(Math.random() * shortWords.length)];
+        }
+      } else if (difficultyLevel === "letters") {
+        // Use CVC words from stage 1 for letters difficulty
+        const words = getStageWords(1).map(w => w.toUpperCase());
+        const simpleWords = words.filter(w => w.length === 3);
+        if (simpleWords.length > 0) {
+          spellingWord = simpleWords[Math.floor(Math.random() * simpleWords.length)];
         }
       }
 
@@ -1276,6 +1596,343 @@ export const useTankGame = create<TankGameState>()(
         return true;
       }
       return false;
+    },
+
+    // Word door methods
+    triggerWordDoor: () => {
+      const { wordDoorCount, wordDoorActive } = get();
+      if (wordDoorActive || wordDoorCount >= 3) return;
+
+      const profileState = useProfiles.getState();
+      const stage = profileState.getPhonicsStage();
+      const words = getStageWords(stage);
+      if (words.length < 3) return;
+
+      const shuffled = [...words].sort(() => Math.random() - 0.5);
+      const correct = shuffled[0].toUpperCase();
+      const options = shuffleArray([
+        correct,
+        shuffled[1].toUpperCase(),
+        shuffled[2].toUpperCase(),
+      ]);
+
+      speakWord(correct);
+      set({
+        wordDoorActive: true,
+        wordDoorWord: correct,
+        wordDoorOptions: options,
+        wordDoorCount: wordDoorCount + 1,
+      });
+    },
+
+    answerWordDoor: (answer) => {
+      const { wordDoorWord } = get();
+      const correct = answer.toUpperCase() === wordDoorWord?.toUpperCase();
+
+      if (correct) {
+        speak(`Yes! ${wordDoorWord?.toLowerCase()}!`, 1.0);
+      } else {
+        speakWord(wordDoorWord || "");
+      }
+
+      // Dismiss after brief delay
+      setTimeout(() => {
+        set({ wordDoorActive: false, wordDoorWord: null, wordDoorOptions: [] });
+      }, correct ? 1000 : 2000);
+
+      return correct;
+    },
+
+    dismissWordDoor: () => {
+      set({ wordDoorActive: false, wordDoorWord: null, wordDoorOptions: [] });
+    },
+
+    // Castle Raider methods
+    initializeCastleRaiderLevel: () => {
+      const { currentLevel, crGemCount, crCoinCount, crLives, crFlightPotions, crHealthPotions, difficultyLevel } = get();
+      const level = generateCastleRaiderLevel(currentLevel, difficultyLevel);
+
+      set({
+        crPlayerX: 2,
+        crPlayerY: 0,
+        crPlayerVX: 0,
+        crPlayerVY: 0,
+        crIsGrounded: false,
+        crPlayerHealth: 100,
+        crMaxHealth: 100,
+        // Preserve gems/coins/lives/potions across levels
+        crGemCount,
+        crCoinCount,
+        crLives,
+        crFlightPotions,
+        crHealthPotions,
+        crKnights: level.knights,
+        crGems: level.gems,
+        crCoins: level.coins,
+        crPlatforms: level.platforms,
+        crPits: level.pits,
+        crFireballs: [],
+        crBossProjectiles: [],
+        crBoss: level.boss,
+        crBossActive: false,
+        crFacingRight: true,
+        crLastSafeX: 2,
+        crLastSafeY: 0,
+        crInvincibleUntil: 0,
+        crFlightUntil: 0,
+        crSpellingChallengeActive: false,
+        crSpellingWord: null,
+        crSpellingCorrectCount: 0,
+        crLevelLength: level.levelLength,
+      });
+    },
+
+    updateCRPlayer: (x, y, vx, vy, grounded) => {
+      set({ crPlayerX: x, crPlayerY: y, crPlayerVX: vx, crPlayerVY: vy, crIsGrounded: grounded });
+    },
+
+    setCRFacing: (right) => {
+      set({ crFacingRight: right });
+    },
+
+    fireCRFireball: (x, y, facingRight) => {
+      if (get().crFireballs.length >= CR_MAX_FIREBALLS) return;
+      const fb: CastleRaiderFireball = {
+        id: `fb-${Date.now()}-${Math.random()}`,
+        x: x + (facingRight ? 0.5 : -0.5),
+        y,
+        vx: facingRight ? CR_FIREBALL_SPEED : -CR_FIREBALL_SPEED,
+        vy: 0,
+      };
+      set(state => ({ crFireballs: [...state.crFireballs, fb] }));
+    },
+
+    setCRFireballs: (fireballs) => {
+      set({ crFireballs: fireballs });
+    },
+
+    setCRBossProjectiles: (projectiles) => {
+      set({ crBossProjectiles: projectiles });
+    },
+
+    damageCRKnight: (id, damage) => {
+      const knight = get().crKnights.find(k => k.id === id);
+      if (!knight || !knight.isAlive) return;
+      const newHealth = Math.max(0, knight.health - damage);
+      if (newHealth <= 0) {
+        get().defeatCRKnight(id);
+      } else {
+        set(state => ({
+          crKnights: state.crKnights.map(k => k.id === id ? { ...k, health: newHealth } : k),
+        }));
+      }
+    },
+
+    defeatCRKnight: (id) => {
+      set(state => ({
+        crKnights: state.crKnights.map(k => k.id === id ? { ...k, isAlive: false, health: 0 } : k),
+        enemiesDefeated: state.enemiesDefeated + 1,
+      }));
+      get().addScore(CR_SCORE_DEFEAT_KNIGHT);
+    },
+
+    setCRKnights: (knights) => {
+      set({ crKnights: knights });
+    },
+
+    collectCRGem: (id) => {
+      const gem = get().crGems.find(g => g.id === id);
+      if (!gem || gem.collected) return;
+      set(state => ({
+        crGems: state.crGems.map(g => g.id === id ? { ...g, collected: true } : g),
+        crGemCount: state.crGemCount + 1,
+      }));
+      get().addScore(CR_SCORE_GEM);
+    },
+
+    collectCRCoin: (id) => {
+      const coin = get().crCoins.find(c => c.id === id);
+      if (!coin || coin.collected) return;
+      set(state => ({
+        crCoins: state.crCoins.map(c => c.id === id ? { ...c, collected: true } : c),
+        crCoinCount: state.crCoinCount + 1,
+      }));
+      get().addScore(CR_SCORE_COIN);
+    },
+
+    takeCRDamage: (amount) => {
+      const { crPlayerHealth, crInvincibleUntil, crLives } = get();
+      if (Date.now() < crInvincibleUntil) return;
+      const newHealth = Math.max(0, crPlayerHealth - amount);
+      set({ crPlayerHealth: newHealth });
+      if (newHealth <= 0) {
+        if (crLives > 0) {
+          // Use a life - respawn
+          set({
+            crLives: crLives - 1,
+            crPlayerHealth: 100,
+            crPlayerX: get().crLastSafeX,
+            crPlayerY: get().crLastSafeY,
+            crPlayerVX: 0,
+            crPlayerVY: 0,
+            crInvincibleUntil: Date.now() + CR_PIT_INVINCIBILITY_MS,
+          });
+        } else {
+          set({ phase: "game_over" });
+        }
+      }
+    },
+
+    crFallInPit: () => {
+      const { crInvincibleUntil } = get();
+      if (Date.now() < crInvincibleUntil) return;
+      const { crPlayerHealth, crLives, crLastSafeX, crLastSafeY } = get();
+      const newHealth = Math.max(0, crPlayerHealth - CR_PIT_DAMAGE);
+      if (newHealth <= 0 && crLives <= 0) {
+        set({ crPlayerHealth: 0, phase: "game_over" });
+        return;
+      }
+      if (newHealth <= 0 && crLives > 0) {
+        set({
+          crLives: crLives - 1,
+          crPlayerHealth: 100,
+          crPlayerX: crLastSafeX,
+          crPlayerY: crLastSafeY,
+          crPlayerVX: 0,
+          crPlayerVY: 0,
+          crInvincibleUntil: Date.now() + CR_PIT_INVINCIBILITY_MS,
+        });
+      } else {
+        set({
+          crPlayerHealth: newHealth,
+          crPlayerX: crLastSafeX,
+          crPlayerY: crLastSafeY,
+          crPlayerVX: 0,
+          crPlayerVY: 0,
+          crInvincibleUntil: Date.now() + CR_PIT_INVINCIBILITY_MS,
+        });
+      }
+    },
+
+    damageCRBoss: (damage) => {
+      const boss = get().crBoss;
+      if (!boss) return;
+      const newHealth = Math.max(0, boss.health - damage);
+      set({ crBoss: { ...boss, health: newHealth } });
+      if (newHealth <= 0) {
+        get().defeatCRBoss();
+      }
+    },
+
+    defeatCRBoss: () => {
+      get().addScore(CR_SCORE_BOSS_DEFEAT);
+      set({ crBoss: null, crBossActive: false, crBossProjectiles: [] });
+      setTimeout(() => {
+        set({ phase: "level_complete" });
+      }, 1500);
+    },
+
+    startSpellingChallenge: () => {
+      const { currentLevel, difficultyLevel } = get();
+      if (difficultyLevel === "letters") {
+        const letter = ALL_LETTERS[Math.floor(Math.random() * ALL_LETTERS.length)];
+        speakLetter(letter);
+        set({ crSpellingChallengeActive: true, crSpellingWord: letter });
+      } else {
+        const word = getSpellingChallengeWord(currentLevel);
+        speakWord(word);
+        set({ crSpellingChallengeActive: true, crSpellingWord: word });
+      }
+    },
+
+    answerSpellingChallenge: (answer) => {
+      const { crSpellingWord, crSpellingCorrectCount, crPlayerHealth, crMaxHealth, crLives, difficultyLevel } = get();
+      if (!crSpellingWord) return false;
+      const correct = answer.trim().toLowerCase() === crSpellingWord.toLowerCase();
+
+      const profileStore = useProfiles.getState();
+      profileStore.updateSrs(crSpellingWord, correct);
+      profileStore.updateAccuracy(crSpellingWord, difficultyLevel === "letters" ? "letter" : "word", correct);
+
+      if (correct) {
+        get().addScore(CR_SCORE_SPELLING_CORRECT);
+        const newCount = crSpellingCorrectCount + 1;
+        set({ crSpellingCorrectCount: newCount });
+
+        // Treasure chest every 3 correct
+        if (newCount % 3 === 0) {
+          const roll = Math.random();
+          if (roll < 0.4) {
+            // Health restore
+            set({ crPlayerHealth: crMaxHealth });
+          } else if (roll < 0.7) {
+            // Extra life
+            set({ crLives: crLives + 1 });
+          } else {
+            // Flight potion
+            set(state => ({ crFlightPotions: state.crFlightPotions + 1 }));
+          }
+        }
+      } else {
+        // Show correct answer via speech
+        if (difficultyLevel === "letters") {
+          setTimeout(() => speakLetter(crSpellingWord || ""), 500);
+        } else {
+          setTimeout(() => speakWord(crSpellingWord || ""), 500);
+        }
+      }
+
+      return correct;
+    },
+
+    dismissSpellingChallenge: () => {
+      set({ crSpellingChallengeActive: false, crSpellingWord: null });
+    },
+
+    useCRHealthPotion: () => {
+      const { crHealthPotions, crPlayerHealth, crMaxHealth } = get();
+      if (crHealthPotions <= 0) return;
+      set({
+        crHealthPotions: crHealthPotions - 1,
+        crPlayerHealth: Math.min(crPlayerHealth + 50, crMaxHealth),
+      });
+    },
+
+    useCRFlightPotion: () => {
+      const { crFlightPotions } = get();
+      if (crFlightPotions <= 0) return;
+      set({
+        crFlightPotions: crFlightPotions - 1,
+        crFlightUntil: Date.now() + CR_FLIGHT_DURATION_MS,
+      });
+    },
+
+    buyCRItem: (item) => {
+      const { crGemCount } = get();
+      let cost = 0;
+      if (item === "health_potion") cost = CR_PRICE_HEALTH_POTION;
+      else if (item === "extra_life") cost = CR_PRICE_EXTRA_LIFE;
+      else if (item === "flight_potion") cost = CR_PRICE_FLIGHT_POTION;
+
+      if (crGemCount < cost) return false;
+
+      set({ crGemCount: crGemCount - cost });
+      if (item === "health_potion") {
+        set(state => ({ crHealthPotions: state.crHealthPotions + 1 }));
+      } else if (item === "extra_life") {
+        set(state => ({ crLives: state.crLives + 1 }));
+      } else if (item === "flight_potion") {
+        set(state => ({ crFlightPotions: state.crFlightPotions + 1 }));
+      }
+      return true;
+    },
+
+    updateCRLastSafe: (x, y) => {
+      set({ crLastSafeX: x, crLastSafeY: y });
+    },
+
+    setCRBossActive: (active) => {
+      set({ crBossActive: active });
     },
   }))
 );

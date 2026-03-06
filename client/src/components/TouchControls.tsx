@@ -57,13 +57,47 @@ function TouchButton({ label, code, className = "" }: ButtonConfig) {
 }
 
 interface TouchControlsProps {
-  mode: "platformer" | "tank";
+  mode: "platformer" | "tank" | "castle_raider";
 }
 
 export function TouchControls({ mode }: TouchControlsProps) {
   // Only show on touch devices
   const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   if (!isTouchDevice) return null;
+
+  if (mode === "castle_raider") {
+    return (
+      <div className="fixed inset-0 pointer-events-none z-50" style={{ touchAction: "none" }}>
+        {/* Left side - movement */}
+        <div className="absolute bottom-6 left-4 flex gap-3 pointer-events-auto">
+          <TouchButton
+            label="◀"
+            code="ArrowLeft"
+            className="w-[72px] h-[72px] bg-blue-600/80 text-3xl flex items-center justify-center"
+          />
+          <TouchButton
+            label="▶"
+            code="ArrowRight"
+            className="w-[72px] h-[72px] bg-blue-600/80 text-3xl flex items-center justify-center"
+          />
+        </div>
+
+        {/* Right side - actions */}
+        <div className="absolute bottom-6 right-4 flex gap-3 pointer-events-auto">
+          <TouchButton
+            label="🔥"
+            code="Space"
+            className="w-[72px] h-[72px] bg-orange-600/80 text-2xl flex items-center justify-center"
+          />
+          <TouchButton
+            label="JUMP"
+            code="ArrowUp"
+            className="w-[88px] h-[72px] bg-green-600/80 text-lg flex items-center justify-center"
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (mode === "platformer") {
     return (
@@ -86,12 +120,12 @@ export function TouchControls({ mode }: TouchControlsProps) {
         <div className="absolute bottom-6 right-4 flex gap-3 pointer-events-auto">
           <TouchButton
             label="🚀"
-            code="KeyM"
+            code="Space"
             className="w-[72px] h-[72px] bg-purple-600/80 text-2xl flex items-center justify-center"
           />
           <TouchButton
             label="JUMP"
-            code="Space"
+            code="ArrowUp"
             className="w-[88px] h-[72px] bg-green-600/80 text-lg flex items-center justify-center"
           />
         </div>

@@ -1,68 +1,88 @@
 import { useTankGame } from "@/lib/stores/useTankGame";
-import { Button } from "@/components/ui/button";
 
 export function GameModeSelection() {
   const { selectGameMode, currentLevel, playerName } = useTankGame();
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-purple-900 to-purple-700">
-      <div className="max-w-4xl w-full mx-4">
-        <div className="text-center mb-6 md:mb-12">
-          {playerName && (
-            <h3 className="text-xl md:text-3xl font-bold text-white mb-4">
-              Great job, {playerName}!
-            </h3>
-          )}
-          <h2 className="text-3xl md:text-6xl font-bold text-yellow-400 mb-4 font-mono" style={{textShadow: "4px 4px 0px #000"}}>
-            CHOOSE YOUR GAME!
-          </h2>
-          <p className="text-2xl text-white font-bold">LEVEL {currentLevel}</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-          {/* Tank Battle Option */}
+    <div className="fixed inset-0 flex items-center justify-center bg-black overflow-hidden">
+      {/* Starfield */}
+      <div className="absolute inset-0">
+        {[...Array(30)].map((_, i) => (
           <div
-            className="bg-gray-800 border-4 border-gray-600 rounded-lg p-4 md:p-8 hover:border-yellow-400 transition-all cursor-pointer transform hover:scale-105"
+            key={i}
+            className="absolute bg-white rounded-full"
+            style={{
+              width: i % 3 === 0 ? 2 : 1,
+              height: i % 3 === 0 ? 2 : 1,
+              left: `${(i * 37 + 13) % 100}%`,
+              top: `${(i * 53 + 7) % 100}%`,
+              opacity: 0.2 + (i % 4) * 0.15,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative w-full max-w-lg mx-auto px-4 text-center">
+        {playerName && (
+          <p className="text-sm font-mono text-cyan-400 mb-1">
+            GREAT JOB, {playerName.toUpperCase()}!
+          </p>
+        )}
+        <h2
+          className="text-2xl md:text-4xl font-bold text-yellow-400 mb-1 font-mono tracking-wide"
+          style={{ textShadow: "4px 4px 0px #b45309, 2px 2px 0px #92400e" }}
+        >
+          CHOOSE YOUR GAME
+        </h2>
+        <p
+          className="text-xs md:text-sm text-cyan-400 font-mono mb-6 tracking-widest"
+          style={{ textShadow: "0 0 8px #22d3ee" }}
+        >
+          --- LEVEL {currentLevel} ---
+        </p>
+
+        <div className="space-y-3">
+          {/* Tank Battle */}
+          <button
             onClick={() => selectGameMode("tank")}
-            role="button"
             aria-label="Play Tank Battle"
+            className="w-full border-2 border-yellow-500 bg-yellow-500/5 hover:bg-yellow-500/20 active:bg-yellow-500/40 transition-colors p-4"
           >
-            <div className="text-center">
-              <div className="text-6xl mb-4">🎮</div>
-              <h3 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-4">TANK BATTLE</h3>
-              <p className="text-white text-lg mb-6">
-                Choose your tank and battle enemies! Shoot bullets and missiles to win!
-              </p>
-              <Button
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold text-xl py-4 md:py-6 min-h-[60px]"
-                onClick={() => selectGameMode("tank")}
-              >
-                PLAY TANK BATTLE
-              </Button>
+            <div className="text-xl md:text-2xl font-bold font-mono text-yellow-400 mb-1">
+              TANK BATTLE
             </div>
-          </div>
+            <div className="text-xs md:text-sm font-mono text-gray-400">
+              CHOOSE YOUR TANK AND BATTLE ENEMIES
+            </div>
+          </button>
 
-          {/* Platformer Option */}
-          <div
-            className="bg-gray-800 border-4 border-gray-600 rounded-lg p-4 md:p-8 hover:border-green-400 transition-all cursor-pointer transform hover:scale-105"
+          {/* Gem Runner */}
+          <button
             onClick={() => selectGameMode("platformer")}
-            role="button"
             aria-label="Play Gem Runner"
+            className="w-full border-2 border-green-500 bg-green-500/5 hover:bg-green-500/20 active:bg-green-500/40 transition-colors p-4"
           >
-            <div className="text-center">
-              <div className="text-6xl mb-4">💎</div>
-              <h3 className="text-2xl md:text-3xl font-bold text-green-400 mb-4">GEM RUNNER</h3>
-              <p className="text-white text-lg mb-6">
-                Run, jump, and collect gems! Jump on bad guys to defeat them and reach the flag!
-              </p>
-              <Button
-                className="w-full bg-green-500 hover:bg-green-600 text-black font-bold text-xl py-4 md:py-6 min-h-[60px]"
-                onClick={() => selectGameMode("platformer")}
-              >
-                PLAY GEM RUNNER
-              </Button>
+            <div className="text-xl md:text-2xl font-bold font-mono text-green-400 mb-1">
+              GEM RUNNER
             </div>
-          </div>
+            <div className="text-xs md:text-sm font-mono text-gray-400">
+              RUN, JUMP, AND COLLECT GEMS
+            </div>
+          </button>
+
+          {/* Castle Raider */}
+          <button
+            onClick={() => selectGameMode("castle_raider")}
+            aria-label="Play Castle Raider"
+            className="w-full border-2 border-purple-500 bg-purple-500/5 hover:bg-purple-500/20 active:bg-purple-500/40 transition-colors p-4"
+          >
+            <div className="text-xl md:text-2xl font-bold font-mono text-purple-400 mb-1">
+              CASTLE RAIDER
+            </div>
+            <div className="text-xs md:text-sm font-mono text-gray-400">
+              DRAGON VS KNIGHTS — SPELL TO WIN
+            </div>
+          </button>
         </div>
       </div>
     </div>

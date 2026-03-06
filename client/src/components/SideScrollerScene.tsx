@@ -1,7 +1,7 @@
-import { useFrame, useLoader } from "@react-three/fiber";
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import { useKeyboardControls, Text } from "@react-three/drei";
 import { useTankGame } from "@/lib/stores/useTankGame";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controls } from "@/App";
 import * as THREE from "three";
 import {
@@ -12,32 +12,8 @@ import {
   PLAYER_DAMAGE_FROM_ENEMY, PLAYER_DAMAGE_FROM_POOP,
   PLAYER_BOUNCE_VX, PLAYER_BOUNCE_VY, POOP_BOUNCE_VY,
   FLAG_REACH_X, EXPLOSION_DURATION_MS, MAX_EXPLOSIONS,
+  HILLS, getTerrainHeight,
 } from "@/lib/constants";
-
-// Hill terrain data - [startX, endX, height]
-const HILLS = [
-  { startX: 8, endX: 14, height: 1.5 },
-  { startX: 20, endX: 28, height: 2.5 },
-  { startX: 35, endX: 42, height: 1.8 },
-];
-
-// Returns the ground height at position X, accounting for hills.
-// Hills use a cosine curve for smooth slopes; flat terrain returns GROUND_Y.
-const getTerrainHeight = (x: number): number => {
-  for (const hill of HILLS) {
-    if (x >= hill.startX && x <= hill.endX) {
-      // Simple linear interpolation for hill slopes
-      const hillCenter = (hill.startX + hill.endX) / 2;
-      const hillWidth = hill.endX - hill.startX;
-      const distFromCenter = Math.abs(x - hillCenter);
-      const normalizedDist = distFromCenter / (hillWidth / 2);
-      // Smooth hill curve using cosine
-      const heightMultiplier = Math.cos(normalizedDist * Math.PI / 2);
-      return GROUND_Y + hill.height * heightMultiplier;
-    }
-  }
-  return GROUND_Y;
-};
 
 // Explosion component with animated scaling/fading using useFrame
 function Explosion({ x, y, startTime }: { x: number; y: number; startTime: number }) {
@@ -105,10 +81,17 @@ export function SideScrollerScene() {
   const destroyPoopBlob = useTankGame(state => state.destroyPoopBlob);
   const takePlatformerDamage = useTankGame(state => state.takePlatformerDamage);
 
+  const triggerWordDoor = useTankGame(state => state.triggerWordDoor);
+  const wordDoorActive = useTankGame(state => state.wordDoorActive);
+  const difficultyLevel = useTankGame(state => state.difficultyLevel);
+  const currentLevel = useTankGame(state => state.currentLevel);
+
+  const { size, camera } = useThree();
   const [, getKeys] = useKeyboardControls<Controls>();
   const wasJumpPressed = useRef(false);
   const wasMissilePressed = useRef(false);
   const lastDamageTime = useRef(0);
+  const lastWordDoorTime = useRef(Date.now());
   const hitSound = useRef<HTMLAudioElement | null>(null);
   const missileSound = useRef<HTMLAudioElement | null>(null);
   
@@ -134,10 +117,14 @@ export function SideScrollerScene() {
   const treeTexture = useLoader(THREE.TextureLoader, "/tree.png");
   const poopTexture = useLoader(THREE.TextureLoader, "/poop.png");
   const platformTileTexture = useLoader(THREE.TextureLoader, "/platform_tile.png");
-  const groundTileTexture = useLoader(THREE.TextureLoader, "/ground_tile.png");
-  const backgroundTexture = useLoader(THREE.TextureLoader, "/background.png");
+  const groundTileTexture = useLoader(THREE.TextureLoader, "/grass.png");
+  const randomBg = useMemo(() => {
+    const bgs = ["/background2.png", "/background3.png", "/background4.png", "/background5.png", "/background6.png", "/background7.png", "/background8.png", "/background9.png"];
+    return bgs[Math.floor(Math.random() * bgs.length)];
+  }, [currentLevel]);
+  const backgroundTexture = useLoader(THREE.TextureLoader, randomBg);
   const rocketTexture = useLoader(THREE.TextureLoader, "/rocket.png");
-  const hillTexture = useLoader(THREE.TextureLoader, "/textures/hill_dirt.jpg");
+  const hillTexture = useLoader(THREE.TextureLoader, "/hill.png");
 
   useFrame((_, delta) => {
     if (platformerReachedFlag) return;
@@ -220,10 +207,15 @@ export function SideScrollerScene() {
       grounded = true;
     }
 
-    // Simple bounds (prevent going too far left)
+    // Simple bounds (prevent going too far left or too high)
     if (newX < 0) {
       newX = 0;
       newVX = 0;
+    }
+    // Ceiling clamp: keep player on screen (visible area top ~2.5 units above camera)
+    if (newY > 1) {
+      newY = 1;
+      newVY = 0;
     }
 
     // Update enemy positions (patrol) - skip distant enemies for collision but still move them
@@ -402,6 +394,12 @@ export function SideScrollerScene() {
       }
     });
 
+    // Word door trigger — every ~30 seconds of gameplay (words difficulty only)
+    if (difficultyLevel === "words" && !wordDoorActive && Date.now() - lastWordDoorTime.current > 30000) {
+      lastWordDoorTime.current = Date.now();
+      triggerWordDoor();
+    }
+
     // Check if reached flag (flag is at x = 240)
     if (newX >= FLAG_REACH_X && !platformerReachedFlag) {
       reachFlag();
@@ -491,42 +489,43 @@ export function SideScrollerScene() {
 
   return (
     <group>
-      {/* Tiled Background - positioned far back */}
-      {[...Array(Math.ceil(260 / 20))].map((_, i) => (
-        <sprite key={`bg-${i}`} position={[i * 20 + 10, 1, -5]} scale={[20, 15, 1]}>
-          <spriteMaterial map={backgroundTexture} transparent={false} />
-        </sprite>
-      ))}
+      {/* Tiled Background - entire image visible vertically, tiles horizontally, aspect ratio preserved */}
+      {(() => {
+        const viewportHeight = size.height / camera.zoom;
+        // Full viewport height so background fills the screen
+        const bgHeight = viewportHeight;
+        const bgWidth = bgHeight * (2928 / 352); // preserve aspect ratio
+        const camY = camera.position.y;
+        // Tile enough to cover the full level width
+        const tileCount = Math.ceil(260 / bgWidth) + 1;
+        return [...Array(tileCount)].map((_, i) => (
+          <sprite key={`bg-${i}`} position={[i * bgWidth + bgWidth / 2, camY, -5]} scale={[bgWidth, bgHeight, 1]}>
+            <spriteMaterial map={backgroundTexture} transparent={false} />
+          </sprite>
+        ));
+      })()}
 
-      {/* Tiled Ground - show ground tiles side by side */}
-      {[...Array(Math.ceil(260 / 1))].map((_, i) => (
-        <sprite key={`ground-${i}`} position={[i + 0.5, GROUND_Y - 0.5, 0]} scale={[1, 1, 1]}>
-          <spriteMaterial map={groundTileTexture} transparent={true} />
-        </sprite>
-      ))}
+      {/* Tiled Ground - preserving grass.png aspect ratio (750:183), top at GROUND_Y */}
+      {(() => {
+        const tileWidth = 2;
+        const tileHeight = tileWidth * (183 / 750);
+        const tileY = GROUND_Y - tileHeight / 2; // top of tile aligns with GROUND_Y
+        return [...Array(Math.ceil(260 / tileWidth) + 1)].map((_, i) => (
+          <sprite key={`ground-${i}`} position={[i * tileWidth + tileWidth / 2, tileY, 0]} scale={[tileWidth, tileHeight, 1]}>
+            <spriteMaterial map={groundTileTexture} transparent={true} />
+          </sprite>
+        ));
+      })()}
 
-      {/* Hills - create visual representation that matches collision */}
+      {/* Hills - single hill.png sprite per hill, stretched to hill width, aspect ratio preserved for height */}
       {HILLS.map((hill, idx) => {
-        // Create hill shape using multiple segments to match cosine curve
-        const segments = 12;
-        const width = hill.endX - hill.startX;
-        const segmentWidth = width / segments;
-        
+        const hillWidth = hill.endX - hill.startX;
+        const hillHeight = hillWidth * (697 / 1373); // preserve aspect ratio
+        const centerX = (hill.startX + hill.endX) / 2;
         return (
-          <group key={`hill-${idx}`}>
-            {[...Array(segments)].map((_, i) => {
-              const x = hill.startX + i * segmentWidth + segmentWidth / 2;
-              const terrainHeight = getTerrainHeight(x);
-              const actualHeight = terrainHeight - GROUND_Y;
-              
-              return (
-                <mesh key={i} position={[x, GROUND_Y + actualHeight / 2, -0.1]}>
-                  <boxGeometry args={[segmentWidth * 1.1, actualHeight, 1]} />
-                  <meshBasicMaterial map={hillTexture} />
-                </mesh>
-              );
-            })}
-          </group>
+          <sprite key={`hill-${idx}`} position={[centerX, GROUND_Y + hillHeight / 2, -0.1]} scale={[hillWidth, hillHeight, 1]}>
+            <spriteMaterial map={hillTexture} transparent={true} />
+          </sprite>
         );
       })}
 

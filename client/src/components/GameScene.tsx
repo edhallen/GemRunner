@@ -2,9 +2,10 @@ import { useRef, useEffect, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useTankGame, WORD_BANK, type TankType, type PowerUpType } from "@/lib/stores/useTankGame";
+import { getStageWords } from "@/lib/phonics";
 import { useProfiles } from "@/lib/stores/useProfiles";
 import { useKeyboardControls, useTexture, Text } from "@react-three/drei";
-import { speak } from "@/lib/speech";
+import { speak, speakWord } from "@/lib/speech";
 import { Controls } from "@/App";
 import {
   TANK_BULLET_SPEED, TANK_MISSILE_SPEED, TANK_FIRE_RATE_MS,
@@ -78,17 +79,18 @@ export function GameScene() {
   const [explosions, setExplosions] = useState<Explosion[]>([]);
 
   const targetWordSpoken = useRef(false);
+  const lastTargetReminder = useRef(0);
 
   useEffect(() => {
     // Enemies: start at 2 and increase by 1 each level (2, 3, 4, 5, 6)
     // Enemies now spawn on the RIGHT side (positive X)
     const enemyCount = 1 + currentLevel;
 
-    // Get words for enemy labels based on difficulty
+    // Get words for enemy labels from phonics stage
     const profile = useProfiles.getState().getActiveProfile();
-    const effectiveLevel = profile?.wordLevel || 1;
-    const levelKey = `level${effectiveLevel}` as keyof typeof WORD_BANK;
-    const wordPool: string[] = WORD_BANK[levelKey] || WORD_BANK.level1;
+    const stage = profile?.phonicsStage || 1;
+    const stageWords = getStageWords(stage).map(w => w.toUpperCase());
+    const wordPool: string[] = stageWords.length > 0 ? stageWords : WORD_BANK.level1;
 
     // Pick unique words for each enemy
     const shuffledWords = [...wordPool].sort(() => Math.random() - 0.5);
@@ -132,7 +134,14 @@ export function GameScene() {
     // Speak the target word once
     if (tankTargetWord && !targetWordSpoken.current) {
       targetWordSpoken.current = true;
-      speak(tankTargetWord.toLowerCase(), 0.7);
+      speakWord(tankTargetWord);
+      lastTargetReminder.current = Date.now();
+    }
+
+    // Re-speak target word every 8 seconds as reminder
+    if (tankTargetWord && Date.now() - lastTargetReminder.current > 8000) {
+      lastTargetReminder.current = Date.now();
+      speakWord(tankTargetWord);
     }
 
     updatePowerUps();
@@ -228,10 +237,14 @@ export function GameScene() {
     updatedBullets.forEach(bullet => {
       if (bullet.owner === "player") {
         enemies.forEach(enemy => {
+          // Only the target-word enemy takes damage — bullets pass through others
+          const isTarget = tankTargetWord && enemy.word?.toUpperCase() === tankTargetWord.toUpperCase();
+          if (!isTarget) return;
+
           const dx = bullet.x - enemy.x;
           const dy = bullet.y - enemy.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
-          
+
           if (distance < TANK_ENEMY_HIT_RADIUS) {
             bulletsToRemove.add(bullet.id);
             const damage = bullet.isMissile ? TANK_MISSILE_DAMAGE : TANK_BULLET_DAMAGE;
@@ -360,7 +373,7 @@ export function GameScene() {
         return (
           <group key={enemy.id}>
             <sprite position={[enemy.x, enemy.y, 0]} scale={[2, 2, 1]}>
-              <spriteMaterial map={enemyTankTexture} transparent={true} />
+              <spriteMaterial map={enemyTankTexture} transparent={true} opacity={isTarget ? 1.0 : 0.6} />
             </sprite>
             {/* Word label above enemy */}
             {enemy.word && (

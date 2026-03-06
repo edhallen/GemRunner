@@ -1,6 +1,15 @@
-// Shared speech synthesis utility with best-available voice selection.
-// Voice priority: Google US English > Samantha (macOS) > Microsoft Zira > any en-US > any en.
+// Shared speech utility — tries ElevenLabs TTS first, falls back to browser speechSynthesis.
 
+import { playAudio, preloadAudio } from "./audioCache";
+
+// Re-export preloadAudio for convenient access
+export { preloadAudio };
+
+// --- Circuit breaker for ElevenLabs ---
+let elevenLabsFailures = 0;
+const MAX_FAILURES = 3;
+
+// --- Browser voice selection (fallback) ---
 let bestVoice: SpeechSynthesisVoice | null = null;
 let voiceReady = false;
 
@@ -21,7 +30,6 @@ function selectBestVoice() {
   voiceReady = bestVoice !== null;
 }
 
-// Initialize voice selection immediately and on voiceschanged
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   if (window.speechSynthesis.getVoices().length > 0) {
     selectBestVoice();
@@ -29,10 +37,9 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   window.speechSynthesis.addEventListener('voiceschanged', selectBestVoice);
 }
 
-/** Speak text aloud using the best available voice. */
-export function speak(text: string, rate = 0.85) {
+/** Fallback: speak using browser speechSynthesis. */
+function browserSpeak(text: string, rate = 0.85): void {
   if (!('speechSynthesis' in window)) return;
-
   try {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -46,6 +53,38 @@ export function speak(text: string, rate = 0.85) {
   } catch {
     // Speech synthesis unavailable
   }
+}
+
+/** Speak text aloud — ElevenLabs first, browser speech fallback. */
+export async function speak(text: string, rate = 0.85): Promise<void> {
+  if (elevenLabsFailures < MAX_FAILURES) {
+    try {
+      const success = await playAudio(text);
+      if (success) {
+        elevenLabsFailures = 0;
+        return;
+      }
+      elevenLabsFailures++;
+    } catch {
+      elevenLabsFailures++;
+    }
+  }
+  browserSpeak(text, rate);
+}
+
+/** Speak a word with the pattern: "the word is [word]" ... pause ... "[word]" */
+export async function speakWord(word: string): Promise<void> {
+  const w = word.toLowerCase();
+  await speak(`The word is ${w}.`);
+  await new Promise(resolve => setTimeout(resolve, 1200));
+  await speak(w);
+}
+
+/** Speak a letter with the pattern: "the letter is [letter]" ... pause ... "[letter]" */
+export async function speakLetter(letter: string): Promise<void> {
+  await speak(`The letter is ${letter}.`);
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  await speak(letter);
 }
 
 /** Returns true if a voice has been loaded and is ready. */
